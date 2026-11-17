@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import Mockup01App from './mockup-01/Mockup01App'
 import ConsoleApp from './mockup-02/components/ConsoleApp'
+import AetherApp from './mockup-03/components/App'
 
 export type MockupEntry = {
   id: string
@@ -22,5 +23,11 @@ export const MOCKUPS: MockupEntry[] = [
     name: '02 · Enucc Console',
     desc: 'AWS Management Console inspired — enterprise HPC cluster administration',
     Component: ConsoleApp,
+  },
+  {
+    id: 'mockup-03',
+    name: '03 · Aether Console',
+    desc: 'Futuristic ops-centre HPC console — AETHER HPC · TITAN-02 · 8,192 nodes',
+    Component: AetherApp,
   },
 ]
