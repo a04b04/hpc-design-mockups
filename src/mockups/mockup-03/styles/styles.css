@@ -790,6 +790,114 @@ body:has(.t3) { background: #090711; }
 .t3-srv.tp-high { background: var(--t3-magenta); }
 .t3-srv.tp-critical { background: var(--t3-red); box-shadow: 0 0 6px rgba(255, 82, 82, 0.55); }.t3-srv.tp-offline { background: #26242f; }
 
+/* env page — reference layout (heatmap + power history left / pdu + alerts right) */
+.t3-rack.sel { border-color: var(--t3-vio2); box-shadow: 0 0 10px rgba(180, 90, 216, 0.28); cursor: pointer; }
+.t3-srvrow { display: block; }
+.t3-env2col { display: grid; grid-template-columns: minmax(0, 1fr) 318px; gap: 10px; align-items: start; }
+
+/* compact per-rack critical chip in the rack headers */
+.t3-rlbl .t3-hmcrit {
+  font-size: 9px;
+  letter-spacing: 0.6px;
+  color: var(--t3-red);
+  margin-left: 3px;
+  opacity: 0.95;
+}
+
+/* rack detail footer rows */
+.t3-ckrow { display: flex; justify-content: space-between; gap: 6px; font-size: 11.5px; }
+.t3-ckrow .nm { color: var(--t3-ink2); letter-spacing: 0.4px; }
+.t3-ckrow .e { font-variant-numeric: tabular-nums; color: var(--t3-green); }
+.t3-ckrow .e.tp-t_elevated { color: #9a6bff; }
+.t3-ckrow .e.tp-t_high { color: var(--t3-magenta); }
+.t3-ckrow .e.tp-t_critical { color: var(--t3-red); }
+
+/* sensor read legend under the heatmap */
+.t3-hmsensors {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px 14px;
+  margin-top: 10px;
+}
+.t3-hmsensors span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--t3-ink2);
+  min-width: 0;
+  white-space: nowrap;
+}
+.t3-hmsensors .nm { color: var(--t3-green2); letter-spacing: 0.4px; }
+.t3-hmsensors .tv { margin-left: auto; color: var(--t3-ink3); font-variant-numeric: tabular-nums; }
+.t3-hmsensors i.tp-normal { background: #21b573; }
+.t3-hmsensors i.tp-elevated { background: #9a6bff; }
+.t3-hmsensors i.tp-high { background: var(--t3-magenta); }
+.t3-hmsensors i.tp-critical { background: var(--t3-red); }
+.t3-hmsensors i.tp-offline { background: #26242f; }
+
+/* power history series toggles */
+.t3-phhistkeys {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  border-left: 1px dashed #2a1c42;
+  padding-left: 12px;
+}
+.t3-phhistkeys .tglrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--t3-ink3);
+  cursor: pointer;
+  min-width: 0;
+}
+.t3-phhistkeys .tglrow:hover { color: var(--t3-ink2); }
+.t3-phhistkeys .tglrow.on { color: var(--t3-ink2); }
+.t3-phhistkeys .tglrow .t3-sw { flex: 0 0 auto; }
+
+/* pdu gauge panel */
+.t3-phgaugegrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 2px; }
+.t3-phgaugegrid .t3-gauge { padding: 10px 4px 8px; }
+.t3-minirows {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 12px;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px dashed #2a1c42;
+}
+.t3-minirows div { display: flex; flex-direction: column; gap: 1px; font-size: 12px; }
+.t3-minirows .k { color: var(--t3-ink3); }
+.t3-minirows .v { color: var(--t3-ink2); font-variant-numeric: tabular-nums; }
+.t3-minirows .t3-val-ok { color: var(--t3-green); }
+.t3-minirows .t3-val-cy { color: var(--t3-teal); }
+
+/* thermal alerts console log */
+.t3-tlog {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.t3-logline { display: flex; gap: 7px; font-size: 12px; padding: 2.5px 0; min-width: 0; }
+.t3-logline .tag { flex: 0 0 auto; letter-spacing: 0.5px; }
+.t3-logline .tag.INFO { color: var(--t3-teal); }
+.t3-logline .tag.WARN { color: var(--t3-amber); }
+.t3-logline .tag.ALERT { color: var(--t3-magenta); }
+.t3-logline .tag.CRIT { color: var(--t3-red); }
+.t3-logline .msg {
+  color: #b9b3d6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 .t3-tchips { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 4px; padding-top: 8px; }
 .t3-tchip {
   display: flex;
@@ -840,6 +948,8 @@ body:has(.t3) { background: #090711; }
 }
 .t3-sw.on { background: rgba(53, 232, 135, 0.25); border-color: rgba(53, 232, 135, 0.5); }
 .t3-sw.on::after { left: 10px; background: var(--t3-green); }
+.t3-sw.checked { background: var(--t3-magenta); border-color: var(--t3-magenta); }
+.t3-sw.checked::after { left: 10px; background: #0d0818; }
 
 /* ---------------- terminal ---------------- */
 .t3-term {
@@ -1057,6 +1167,7 @@ body:has(.t3) { background: #090711; }
   .t3-grid-matrix, .t3-grid-env, .t3-admgrid { grid-template-columns: minmax(0, 1fr) 258px; }
   .t3-grid-env2, .t3-ovgrid2 { grid-template-columns: minmax(0, 1fr); }
   .t3-mongrid { grid-template-columns: minmax(0, 1fr) 300px; }
+  .t3-env2col { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 980px) {
   .t3-grid-matrix, .t3-grid-env, .t3-admgrid, .t3-mongrid { grid-template-columns: minmax(0, 1fr); }
