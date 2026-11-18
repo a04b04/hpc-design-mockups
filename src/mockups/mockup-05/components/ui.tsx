@@ -286,7 +286,7 @@ export function LineChart({ specs, hours = 24, width = 640, height = 220 }: { sp
         {hover && specs.map((s, si) => {
           const p = points[si][hover.i]
           if (!p) return null
-          return <circle key={s.key} cx={p.x} cy={p.y} r={3} fill={`var(--a5-${s.color})`} stroke="#fff" strokeWidth={1.5} />
+          return <circle key={s.key} cx={p.x} cy={p.y} r={3} fill={`var(--a5-${s.color})`} stroke="var(--a5-card)" strokeWidth={1.5} />
         })}
         {hover && <line x1={pad + hover.x} x2={pad + hover.x} y1={pad} y2={height - pad} stroke="var(--a5-blue)" strokeWidth={1} strokeDasharray="3 3" />}
       </svg>

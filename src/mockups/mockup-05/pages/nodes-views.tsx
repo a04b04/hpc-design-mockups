@@ -62,7 +62,7 @@ function gpuUtilOf(n: EnNode): number {
   return h % 5
 }
 
-const gpuSqColor = (u: number): string => (u >= 75 ? '#3e7ec2' : u >= 40 ? '#7ea9d6' : u >= 1 ? '#bcd4ee' : '#e2e8f0')
+const gpuSqColor = (u: number): string => (u >= 75 ? '#3e7ec2' : u >= 40 ? '#7ea9d6' : u >= 1 ? '#bcd4ee' : 'var(--a5-track)')
 
 interface CardGroup {
   title: string

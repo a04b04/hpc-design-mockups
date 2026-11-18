@@ -1326,3 +1326,117 @@
 @media (max-width: 1000px) {
   .a5-cv-sect-desc { display: none; }
 }
+
+/* ==================================================================
+   DARK MODE — scoped to .aws5.aws5-dark (Mockup 5 only)
+   Token overrides + targeted overrides for hardcoded light colours.
+   ================================================================== */
+.aws5.aws5-dark {
+  --a5-navy: #11161d;
+  --a5-navy2: #1c232d;
+  --a5-navy3: #29333f;
+  --a5-bg: #0f141a;
+  --a5-card: #161d26;
+  --a5-line: #2a3441;
+  --a5-line-soft: #222b36;
+  --a5-ink: #e8edf4;
+  --a5-sub: #a7b3c2;
+  --a5-muted: #718090;
+  --a5-blue: #4f9cf5;
+  --a5-blue-hover: #6cabf7;
+  --a5-blue-bg: rgba(79, 156, 245, 0.14);
+  --a5-blue-line: rgba(79, 156, 245, 0.42);
+  --a5-green: #4fc579;
+  --a5-green-bg: rgba(46, 164, 79, 0.16);
+  --a5-green-dot: #3fb56a;
+  --a5-amber: #e0a158;
+  --a5-amber-bg: rgba(241, 144, 58, 0.14);
+  --a5-purple: #a585fa;
+  --a5-purple-2: #b394fb;
+  --a5-purple-bg: rgba(145, 94, 240, 0.16);
+  --a5-red: #ec7068;
+  --a5-red-bg: rgba(210, 52, 44, 0.16);
+  --a5-track: #28313d;
+  --a5-hover: #222c38;
+  --a5-sel: #1d2c42;
+  background: var(--a5-bg);
+  color: var(--a5-ink);
+}
+
+/* --- header chrome (nav vars already re-pointed above) --- */
+.aws5.aws5-dark .aws5-logo-mark { background: #e8edf4; color: #11161d; }
+.aws5.aws5-dark .aws5-head-item.active { background: rgba(79, 156, 245, 0.18); }
+.aws5.aws5-dark .aws5-searchbox-main,
+.aws5.aws5-dark .aws5-searchbox-main input { color: var(--a5-ink); }
+.aws5.aws5-dark .aws5-crumbsep,
+.aws5.aws5-dark .a5-crumb-sep,
+.aws5.aws5-dark .a5-pag-sep,
+.aws5.aws5-dark .a5-sep { color: #4d5969; }
+
+/* --- buttons --- */
+.aws5.aws5-dark .aws5-btn--outline { background: #222c38; border-color: #3d4a5a; }
+.aws5.aws5-dark .aws5-btn--outline:hover { background: #2b3644; }
+.aws5.aws5-dark .aws5-btn--danger { background: rgba(210, 52, 44, 0.12); border-color: rgba(236, 112, 104, 0.45); }
+.aws5.aws5-dark .aws5-btn--danger:hover { background: rgba(210, 52, 44, 0.2); }
+.aws5.aws5-dark .aws5-iconbtn { background: #222c38; border-color: #3d4a5a; }
+.aws5.aws5-dark .aws5-iconbtn:hover { background: #2b3644; }
+.aws5.aws5-dark .aws5-iconbtn[aria-pressed="true"] { color: var(--a5-blue); border-color: var(--a5-blue-line); background: var(--a5-blue-bg); }
+
+/* --- forms / filters --- */
+.aws5.aws5-dark .aws5-input,
+.aws5.aws5-dark .aws5-select,
+.aws5.aws5-dark .aws5-input--sm,
+.aws5.aws5-dark .aws5-select--sm { background: #1c242e; border-color: #3d4a5a; color: var(--a5-ink); }
+.aws5.aws5-dark .aws5-input:hover,
+.aws5.aws5-dark .aws5-select:hover { border-color: #4d5d72; }
+.aws5.aws5-dark .aws5-searchbox-main { background: #1c242e; border-color: #3d4a5a; }
+.aws5.aws5-dark .aws5-fchip { background: #222c38; border-color: #3d4a5a; color: var(--a5-ink); }
+.aws5.aws5-dark .aws5-fchip:hover { background: #2b3644; }
+.aws5.aws5-dark .aws5-fchip.on { background: var(--a5-blue-bg); border-color: var(--a5-blue-line); color: var(--a5-blue); }
+.aws5.aws5-dark .aws5-cb { background: #222c38; border-color: #4d5d72; }
+
+/* --- tables --- */
+.aws5.aws5-dark .aws5-table th { background: #1a222c; color: #9aa7b6; }
+.aws5.aws5-dark .aws5-table th .a5-sort { color: #5a6876; }
+.aws5.aws5-dark .aws5-table tbody tr:hover td { background: #1d2631; }
+.aws5.aws5-dark .aws5-pag-btns button:disabled { color: #57646f; }
+.aws5.aws5-dark .a5-pagefoot, .aws5.aws5-dark .a5-cardfoot { color: var(--a5-sub); }
+
+/* --- cards / kpi hover --- */
+.aws5.aws5-dark .aws5-kpi:hover { border-color: #44546a; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4); }
+
+/* --- menus, toasts, modals, drawer, tooltip --- */
+.aws5.aws5-dark .aws5-menu,
+.aws5.aws5-dark .aws5-toast,
+.aws5.aws5-dark .aws5-modal,
+.aws5.aws5-dark .aws5-drawer,
+.aws5.aws5-dark .aws5-chart-tip,
+.aws5.aws5-dark .a5-services-menu { background: #1c2430; box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55); }
+.aws5.aws5-dark .a5-modal-f { background: #232c39; }
+.aws5.aws5-dark .aws5-err { border-color: rgba(236, 112, 104, 0.4); background: rgba(210, 52, 44, 0.12); }
+.aws5.aws5-dark .aws5-sysbanner { background: rgba(46, 164, 79, 0.08); }
+.aws5.aws5-dark .aws5-sysbanner .a5-sysbanner-title { color: #c8d2df; }
+.aws5.aws5-dark .aws5-sysbanner .a5-sysbanner-sub { color: #8fa0b4; }
+
+/* --- info banner (light-blue block) --- */
+.aws5.aws5-dark .aws5-banner-blue { background: rgba(79, 156, 245, 0.08); }
+.aws5.aws5-dark .aws5-banner-blue .t { color: #9cc2ee; }
+.aws5.aws5-dark .aws5-banner-blue .d { color: #7d95b5; }
+.aws5.aws5-dark .aws5-banner-blue .m-label { color: #7d95b5; }
+.aws5.aws5-dark .aws5-banner-blue .m-val { color: #a9cdf5; }
+.aws5.aws5-dark .aws5-banner-blue .a5-banner-meta b,
+.aws5.aws5-dark .aws5-banner-blue .a5-banner-meta .val { color: #a9cdf5; }
+
+/* --- code blocks --- */
+.aws5.aws5-dark .aws5-code { background: #10151b; border-color: #2a3441; color: #b7c4d4; }
+
+/* --- segmented view selector (nodes) --- */
+.aws5.aws5-dark .a5-seg { background: #1c242e; }
+.aws5.aws5-dark .a5-seg button { color: #9aa7b6; }
+.aws5.aws5-dark .a5-seg button:hover { color: var(--a5-ink); }
+.aws5.aws5-dark .a5-seg button.active { background: #2b3644; color: var(--a5-ink); }
+
+/* --- scrollbars --- */
+.aws5.aws5-dark ::-webkit-scrollbar-thumb { background: #3d4a5a; }
+.aws5.aws5-dark ::-webkit-scrollbar-thumb:hover { background: #4d5d72; }
+.aws5.aws5-dark ::-webkit-scrollbar-track { background: transparent; }

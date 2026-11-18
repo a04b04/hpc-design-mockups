@@ -10,7 +10,7 @@ const A5_GROUPS: Array<{ label: string; items: Array<[string, string, string]> }
   { label: 'Administration', items: [['Node Management', 'node-mgmt', 'ServerCog'], ['Configuration', 'configuration', 'Settings']] },
 ]
 
-export function Header({ role, onRole, onNavigate, onOpenTerminal }: { role: Role; onRole: (r: Role) => void; onNavigate: (page: string) => void; onOpenTerminal: () => void }) {
+export function Header({ role, onRole, onNavigate, onOpenTerminal, dark, onToggleDark }: { role: Role; onRole: (r: Role) => void; onNavigate: (page: string) => void; onOpenTerminal: () => void; dark: boolean; onToggleDark: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [servicesOpen, setServicesOpen] = useState(false)
   const userRef = useRef<HTMLDivElement>(null)
@@ -69,6 +69,7 @@ export function Header({ role, onRole, onNavigate, onOpenTerminal }: { role: Rol
       <button className="aws5-iconbtn" title="Notifications"><Lucide.Bell size={16} /><span className="a5-dot-badge" /></button>
       <button className="aws5-iconbtn" title="Support"><Lucide.CircleHelp size={16} /></button>
       <button className="aws5-iconbtn" title="Open terminal" onClick={onOpenTerminal}><Lucide.SquareTerminal size={16} /></button>
+      <button className="aws5-iconbtn" title="Toggle dark mode" aria-pressed={dark} onClick={onToggleDark}>{dark ? <Lucide.Sun size={16} /> : <Lucide.Moon size={16} />}</button>
 
       <div className="aws5-menuwrap" ref={userRef}>
         <button className="aws5-head-user" onClick={() => setMenuOpen(!menuOpen)}>

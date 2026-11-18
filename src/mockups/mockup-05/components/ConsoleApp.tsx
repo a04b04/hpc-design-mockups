@@ -29,6 +29,11 @@ export default function ConsoleApp() {
   const [collapsed, setCollapsed] = useState(false)
   const [termTabs, setTermTabs] = useState<TermTab[]>([])
   const [termActive, setTermActive] = useState<number | null>(null)
+  const [dark, setDark] = useState(() => window.localStorage.getItem('enucc5.theme') === 'dark')
+
+  useEffect(() => {
+    window.localStorage.setItem('enucc5.theme', dark ? 'dark' : 'light')
+  }, [dark])
 
   useEffect(() => {
     const onHash = () => setHash(window.location.hash)
@@ -107,8 +112,8 @@ export default function ConsoleApp() {
   })()
 
   return (
-    <div className="aws5" data-page={pageName}>
-      <Header role={role} onRole={setRole} onNavigate={navigate} onOpenTerminal={openFirstSession} />
+    <div className={`aws5${dark ? ' aws5-dark' : ''}`} data-page={pageName}>
+      <Header role={role} onRole={setRole} onNavigate={navigate} onOpenTerminal={openFirstSession} dark={dark} onToggleDark={() => setDark((d) => !d)} />
       <div className="aws5-shell">
         <Sidebar page={route ?? { page: 'dashboard' }} role={role} collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} onNavigate={navigate} />
         <main className="aws5-main">{body}</main>
