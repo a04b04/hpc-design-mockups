@@ -1,4 +1,5 @@
 import * as Lucide from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Icon } from './ui'
 import type { A5Route } from './ui'
 import type { Role } from '../data'
@@ -50,6 +51,26 @@ export function Sidebar({ page, role, collapsed, onToggle, onNavigate }: {
   onNavigate: (p: A5Route['page']) => void
 }) {
   const isAdmin = role === 'admin'
+  const visibleGroups = useMemo(() => GROUPS.filter((g) => !g.admin || isAdmin), [isAdmin])
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    for (const g of visibleGroups) init[g.label] = false
+    init['Cluster Overview'] = true
+    return init
+  })
+
+  const activeGroup = useMemo(() => {
+    const g = visibleGroups.find((g) => g.items.some((it) => it.page === page.page))
+    return g ? g.label : null
+  }, [visibleGroups, page.page])
+
+  // keep the category containing the active page expanded
+  useEffect(() => {
+    if (activeGroup) setExpanded((prev) => (prev[activeGroup] ? prev : { ...prev, [activeGroup]: true }))
+  }, [activeGroup])
+
+  const toggle = (label: string) => setExpanded((prev) => ({ ...prev, [label]: !prev[label] }))
+
   return (
     <aside className={`aws5-side${collapsed ? ' collapsed' : ''}`}>
       <div className="aws5-side-head">
@@ -63,20 +84,35 @@ export function Sidebar({ page, role, collapsed, onToggle, onNavigate }: {
       <nav className="aws5-side-nav">
         {GROUPS.map((g) => {
           if (g.admin && !isAdmin) return null
+          const isOpen = !!expanded[g.label] || collapsed
           return (
-            <div key={g.label}>
-              {!collapsed && <div className="aws5-side-label">{g.label}</div>}
-              {g.items.map((it) => (
+            <div key={g.label} className="aws5-nav-group">
+              {!collapsed && (
                 <button
-                  key={it.page}
-                  className={`aws5-nav-item${page.page === it.page ? ' active' : ''}`}
-                  onClick={() => onNavigate(it.page)}
-                  title={collapsed ? it.label : undefined}
+                  type="button"
+                  className="aws5-side-label aws5-side-label--toggle"
+                  onClick={() => toggle(g.label)}
+                  aria-expanded={isOpen}
                 >
-                  <Icon name={it.icon} size={15} />
-                  {!collapsed && <span>{it.label}</span>}
+                  <span>{g.label}</span>
+                  <Lucide.ChevronDown size={12} className={`aws5-side-chev${isOpen ? ' open' : ''}`} />
                 </button>
-              ))}
+              )}
+              <div className="aws5-nav-items" data-open={String(isOpen)}>
+                <div className="aws5-nav-items-in">
+                  {g.items.map((it) => (
+                    <button
+                      key={it.page}
+                      className={`aws5-nav-item${page.page === it.page ? ' active' : ''}`}
+                      onClick={() => onNavigate(it.page)}
+                      title={collapsed ? it.label : undefined}
+                    >
+                      <Icon name={it.icon} size={15} />
+                      {!collapsed && <span>{it.label}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )
         })}
