@@ -324,9 +324,9 @@ export function Sparkline({ data, color = 'blue', width = 90, height = 26 }: { d
 
 // Router ----------------------------------------------------------------
 export type A5Route =
-  | { page: 'dashboard' } | { page: 'nodes' } | { page: 'node'; node: string }
-  | { page: 'partitions' } | { page: 'reservations' }
-  | { page: 'jobs' } | { page: 'submit-job' } | { page: 'job-templates' } | { page: 'job-history' }
+  | { page: 'dashboard' } | { page: 'nodes'; partition?: string } | { page: 'node'; node: string }
+  | { page: 'partitions' } | { page: 'partition'; partition: string } | { page: 'reservations' }
+  | { page: 'jobs'; partition?: string } | { page: 'submit-job'; partition?: string } | { page: 'job-templates' } | { page: 'job-history' }
   | { page: 'filesystems' } | { page: 'file-browser' } | { page: 'quotas' }
   | { page: 'cluster-health' } | { page: 'resource-utilisation' } | { page: 'alerts' }
   | { page: 'terminal' } | { page: 'remote-desktop' }
@@ -338,7 +338,9 @@ export const A5_NAV_PERMISSIONS: Record<string, 'all' | 'admin'> = {
 
 export function routeToHash(r: A5Route): string {
   if (r.page === 'node') return `#/mockup-05/nodes/${r.node}`
-  return `#/mockup-05/${r.page}`
+  if (r.page === 'partition') return `#/mockup-05/partitions/${r.partition}`
+  const q = (r.page === 'nodes' || r.page === 'jobs') && r.partition ? `?partition=${r.partition}` : ''
+  return `#/mockup-05/${r.page}${q}`
 }
 
 export function navTo(r: A5Route): void {
@@ -346,10 +348,12 @@ export function navTo(r: A5Route): void {
 }
 
 export function parseHash(hash: string): A5Route | null {
-  const m = /^#\/mockup-05\/([\w-]+)(?:\/([\w.-]+))?$/.exec(hash)
+  const m = /^#\/mockup-05\/([\w-]+)(?:\/([\w.-]+))?(?:\?partition=([\w-]+))?$/.exec(hash)
   if (!m) return null
-  const [, seg, arg] = m
+  const [, seg, arg, part] = m
   if (seg === 'nodes' && arg) return { page: 'node', node: arg }
+  if (seg === 'partitions' && arg) return { page: 'partition', partition: arg }
+  if (part && (seg === 'nodes' || seg === 'jobs')) return { page: seg, partition: part } as A5Route
   const known = ['dashboard', 'nodes', 'partitions', 'reservations', 'jobs', 'submit-job', 'job-templates', 'job-history', 'filesystems', 'file-browser', 'quotas', 'cluster-health', 'resource-utilisation', 'alerts', 'terminal', 'remote-desktop', 'users', 'slurm-accounts', 'qos', 'node-mgmt', 'configuration']
   if (known.includes(seg)) return { page: seg } as A5Route
   return null

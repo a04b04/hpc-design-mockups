@@ -12,10 +12,10 @@ type SortCol = 'name' | 'state' | 'partition' | 'cores' | 'memGB' | 'jobs' | 'up
 
 const STATE_FILTERS: Array<SlurmState | 'all'> = ['all', 'IDLE', 'ALLOCATED', 'DRAINING', 'DOWN']
 
-export function NodesPage({ role }: { role: Role }) {
+export function NodesPage({ role, initialPartition }: { role: Role; initialPartition?: string }) {
   const [q, setQ] = useState('')
   const [state, setState] = useState<SlurmState | 'all'>('all')
-  const [partition, setPartition] = useState<string>('all')
+  const [partition, setPartition] = useState<string>(initialPartition ?? 'all')
   const [sort, setSort] = useState<{ col: SortCol; asc: boolean }>({ col: 'name', asc: true })
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())

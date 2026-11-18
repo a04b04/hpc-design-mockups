@@ -633,6 +633,10 @@
   vertical-align: middle;
   white-space: nowrap;
 }
+/* tighter cell padding so wide tables (e.g. partitions) fit without an x-scroll */
+.aws5-table.ptx-tight th { padding: 9px 10px; }
+.aws5-table.ptx-tight td { padding: 10px 10px; }
+.aws5-table.ptx-tight .a5-barcell { min-width: 96px; }
 .aws5-table tbody tr:last-child td { border-bottom: none; }
 .aws5-table tbody tr:hover td { background: #f7f9fc; }
 .aws5-table tbody tr.sel td { background: var(--a5-sel); }
@@ -1637,3 +1641,84 @@
 .aws5.aws5-dark .a5-segbtn { color: #9aa7b6; }
 .aws5.aws5-dark .a5-segbtn:hover { color: var(--a5-ink); }
 .aws5.aws5-dark .a5-segbtn.active { background: #2b3644; color: #7fb3ef; box-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 0 0 1px #3b77ad; }
+
+/* ==========================================================================
+   Partitions page (ptx-*) — shared by list view and detail view
+   ========================================================================== */
+.aws5 .a5-stack > * + * { margin-top: 14px; }
+/* larger block spacing for page-level section stacks (e.g. partitions list) */
+.aws5 .a5-stack-lg > * + * { margin-top: 22px; }.aws5 .mono { font-family: 'JetBrains Mono Variable', ui-monospace, monospace; font-size: 12px; }
+
+/* Card meta --------------------------------------------------------------- */
+.aws5 .ptx-rows { display: grid; grid-template-columns: 1fr; gap: 0; padding: 10px 15px; border-top: 1px solid var(--a5-line); }
+.aws5 .ptx-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 12px; min-width: 0; }
+.aws5 .ptx-k { flex: 0 0 48px; color: var(--a5-sub); font-size: 11.5px; }
+.aws5 .ptx-v { color: var(--a5-ink); font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.aws5 .ptx-v.ptx-wrap { flex-wrap: wrap; row-gap: 3px; }
+.aws5 .ptx-state { display: inline-flex; align-items: center; gap: 4px; color: var(--a5-sub); font-size: 11.5px; font-weight: 400; }
+.aws5 .ptx-state b { color: var(--a5-ink); font-weight: 650; }
+.aws5 .ptx-gpurow { display: flex; align-items: center; gap: 8px; padding: 9px 15px; border-top: 1px dashed var(--a5-line); font-size: 11.5px; color: var(--a5-sub); }
+.aws5 .ptx-cardfoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 15px; border-top: 1px dashed var(--a5-line); font-size: 11.5px; color: var(--a5-sub); }
+.aws5 .ptx-alertchip, .aws5 .ptx-okchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
+.aws5 .ptx-alertchip { background: var(--a5-red-bg); color: var(--a5-red); }
+.aws5 .ptx-okchip { background: var(--a5-green-bg); color: var(--a5-green); }
+
+/* Table + pagehead extras -------------------------------------------------- */
+.aws5 .ptx-sub-hint { color: var(--a5-muted); font-weight: 450; font-size: 11.5px; }
+.aws5 .ptx-hint { color: var(--a5-muted); font-size: 11.5px; font-weight: 450; }
+.aws5 .ptx-link { background: none; border: 0; padding: 0; color: var(--a5-blue); font-size: 11.5px; font-weight: 550; cursor: pointer; }
+.aws5 .ptx-link:hover { text-decoration: underline; }
+.aws5 .ptx-note { color: var(--a5-muted); font-size: 11.5px; margin-top: 10px; display: flex; gap: 6px; align-items: flex-start; }
+
+/* Detail utilisation ------------------------------------------------------- */
+.aws5 .ptx-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; }
+.aws5 .ptx-utilcard { padding: 14px 15px; border: 1px solid var(--a5-line); border-radius: 9px; background: var(--a5-hover); }
+.aws5 .ptx-bars { display: grid; gap: 11px; margin-top: 12px; }
+.aws5 .ptx-bar { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.aws5 .ptx-bark { flex: 0 0 58px; color: var(--a5-sub); font-size: 11.5px; font-weight: 600; }
+.aws5 .ptx-bar > div { flex: 1; }
+.aws5 .ptx-bar .mono { flex: 0 0 44px; text-align: right; font-size: 11.5px; color: var(--a5-ink); }
+.aws5 .ptx-sparkgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.aws5 .ptx-sparkbox { padding: 10px 12px 6px; border: 1px solid var(--a5-line); border-radius: 8px; background: var(--a5-card); }
+.aws5 .ptx-sparkhead { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--a5-sub); margin-bottom: 4px; }
+.aws5 .ptx-sparksvg { display: block; width: 100%; height: 44px; }
+.aws5 .ptx-sparkline { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Reservation list --------------------------------------------------------- */
+.aws5 .ptx-reslist { display: grid; gap: 8px; padding: 12px 15px; }
+.aws5 .ptx-resrow { display: flex; align-items: center; gap: 10px; font-size: 12px; padding: 8px 10px; border: 1px solid var(--a5-line); border-radius: 8px; background: var(--a5-card); }
+.aws5 .ptx-resmeta { color: var(--a5-sub); font-size: 11.5px; margin-left: auto; }
+
+/* Alerts ------------------------------------------------------------------- */
+.aws5 .ptx-alertlist { display: grid; gap: 8px; padding: 12px 15px; }
+.aws5 .ptx-alertrow { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.aws5 .ptx-sev { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 12px; }
+.aws5 .ptx-sev--critical { background: var(--a5-red-bg); color: var(--a5-red); }
+.aws5 .ptx-sev--warning { background: var(--a5-amber-bg); color: var(--a5-amber); }
+.aws5 .ptx-sev--info { background: var(--a5-blue-bg); color: var(--a5-blue); }
+.aws5 .ptx-alerttext { color: var(--a5-ink); }
+.aws5 .ptx-alertmeta { margin-left: auto; color: var(--a5-muted); font-size: 11px; }
+.aws5 .ptx-alertline { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 11px; border-radius: 7px; background: var(--a5-amber-bg); color: var(--a5-amber); font-size: 12px; font-weight: 550; }
+
+/* Configuration tab -------------------------------------------------------- */
+.aws5 .ptx-confgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+.aws5 .ptx-confkv { display: contents; }
+.aws5 .ptx-kvrow { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--a5-line); }
+.aws5 .ptx-kvk { flex: 0 0 42%; color: var(--a5-sub); font-size: 11.5px; font-weight: 550; }
+.aws5 .ptx-kvv { color: var(--a5-ink); font-size: 12px; }
+.aws5 .ptx-codebox { margin-top: 12px; border: 1px solid var(--a5-line); border-radius: 8px; overflow: hidden; }
+.aws5 .ptx-codehead { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border-bottom: 1px solid var(--a5-line); background: var(--a5-hover); font-size: 11px; font-weight: 650; color: var(--a5-sub); letter-spacing: .03em; text-transform: uppercase; }
+.aws5 .ptx-codebox pre { margin: 0; padding: 12px 14px; font-family: 'JetBrains Mono Variable', ui-monospace, monospace; font-size: 11.5px; line-height: 1.55; color: var(--a5-ink); overflow: auto; max-height: 260px; }
+
+/* KPI icon chip (companion to aws5-counticon) ------------------------------ */
+.aws5 .ptx-icoicon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 7px; }
+.aws5 .ptx-b { border-top: 0; }
+
+/* Dark-mode overrides ------------------------------------------------------ */
+.aws5.aws5-dark .ptx-utilcard { background: #1a222c; }
+.aws5.aws5-dark .ptx-sparkbox { background: #161d26; }
+.aws5.aws5-dark .ptx-resrow { background: #161d26; }
+.aws5.aws5-dark .ptx-link { color: #4f9cf5; }
+.aws5.aws5-dark .ptx-kvrow { border-bottom-color: #2a3441; }
+.aws5.aws5-dark .ptx-codebox pre { color: #d7e2ee; }
+.aws5.aws5-dark .ptx-codehead { background: #1a222c; }

@@ -1,9 +1,11 @@
+import { useMemo } from 'react'
 import * as Lucide from 'lucide-react'
 import { Breadcrumbs, JobStateChip, navTo } from '../components/ui'
 import { JOBS } from '../data'
 
-export function JobsPage() {
-  const pinned = [...JOBS].sort((a, b) => b.id - a.id).slice(0, 25)
+export function JobsPage({ initialPartition }: { initialPartition?: string }) {
+  const pool = initialPartition ? JOBS.filter((j) => j.partition === initialPartition) : JOBS
+  const pinned = useMemo(() => [...pool].sort((a, b) => b.id - a.id).slice(0, 25), [pool])
   return (
     <>
       <Breadcrumbs items={[{ label: 'Workloads' }, { label: 'Slurm Jobs' }]} />

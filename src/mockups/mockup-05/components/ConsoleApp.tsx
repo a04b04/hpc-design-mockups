@@ -12,7 +12,8 @@ import { NodeDetailPage } from '../pages/node-detail'
 import { JobsPage } from '../pages/jobs'
 import { JobHistoryPage } from '../pages/job-history'
 import { JobTemplatesPage } from '../pages/job-templates'
-import { PartitionsPage, ReservationsPage, SlurmAccountsPage, UsersPage } from '../pages/cluster-pages'
+import { PartitionsPage, PartitionDetailPage } from '../pages/partitions'
+import { ReservationsPage, SlurmAccountsPage, UsersPage } from '../pages/cluster-pages'
 import { FilesystemsPage, QuotasPage } from '../pages/storage-pages'
 import { SubmitJobPage } from '../pages/submit-job'
 import {
@@ -87,11 +88,12 @@ export default function ConsoleApp() {
     if (!route) return <DashboardPage role={role} />
     switch (route.page) {
       case 'dashboard': return <DashboardPage role={role} />
-      case 'nodes': return <NodesPage role={role} />
+      case 'nodes': return 'partition' in route && route.partition ? <NodesPage role={role} initialPartition={route.partition} /> : <NodesPage role={role} />
       case 'node': return 'node' in route ? <NodeDetailPage nodeName={route.node} role={role} onOpenSession={openSession} /> : null
       case 'partitions': return <PartitionsPage />
+      case 'partition': return 'partition' in route ? <PartitionDetailPage name={route.partition} role={role} /> : null
       case 'reservations': return <ReservationsPage />
-      case 'jobs': return <JobsPage />
+      case 'jobs': return 'partition' in route && route.partition ? <JobsPage initialPartition={route.partition} /> : <JobsPage />
       case 'submit-job': return <SubmitJobPage />
       case 'job-templates': return <JobTemplatesPage />
       case 'job-history': return <JobHistoryPage />

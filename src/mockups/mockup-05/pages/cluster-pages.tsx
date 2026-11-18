@@ -1,40 +1,9 @@
 import { useState } from 'react'
 import * as Lucide from 'lucide-react'
 import {
-  Breadcrumbs, Card, CardB, StateChipText, emitToast,
+  Breadcrumbs, StateChipText, emitToast,
 } from '../components/ui'
-import { PARTITIONS, RESERVATIONS, USERS } from '../data'
-
-export function PartitionsPage() {
-  return (
-    <>
-      <Breadcrumbs items={[{ label: 'Compute' }, { label: 'Partitions' }]} />
-      <div className="a5-pagehead-row">
-        <div>
-          <h1 className="aws5-h1">Partitions</h1>
-          <div className="a5-pagehead-sub">4 configured partitions · all scheduling normally</div>
-        </div>
-      </div>
-      <div className="a5-four">
-        {PARTITIONS.map((p) => (
-          <Card key={p.name}>
-            <CardB>
-              <div className="a5-pt-head"><span className="mono">{p.name}</span><StateChipText text="up" kind="green" /></div>
-              <div className="a5-pt-stats">
-                <div><b className="mono">{p.nodes}</b><span>nodes</span></div>
-                <div><b className="mono">{p.coresPerNode}</b><span>cores/node</span></div>
-                <div><b className="mono">{p.memPerNodeGB >= 1024 ? '1 TB' : `${p.memPerNodeGB} GB`}</b><span>mem/node</span></div>
-                <div><b className="mono">{p.gpus || '—'}</b><span>GPUs</span></div>
-              </div>
-              <div className="a5-pt-foot mono">Timelimit {p.timelimit}</div>
-            </CardB>
-          </Card>
-        ))}
-      </div>
-      <p className="a5-footnote"><Lucide.Info size={13} /> Equivalent to <span className="mono">sinfo</span>. Partitions group nodes with shared scheduling policy.</p>
-    </>
-  )
-}
+import { RESERVATIONS, USERS } from '../data'
 
 export function ReservationsPage() {
   return (
