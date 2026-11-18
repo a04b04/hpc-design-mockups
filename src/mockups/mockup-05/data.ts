@@ -230,10 +230,10 @@ export const RESERVATIONS = [
 ]
 
 export const FILESYSTEMS = [
-  { name: '/home', server: 'fs-home', type: 'NFS', sizeTB: 1.0, usedTB: 0.74, mounted: true, quota: '1.0 TB per user', status: 'Healthy' as const },
-  { name: '/scratch', server: 'fs-scratch', type: 'Lustre', sizeTB: 2.0, usedTB: 1.4, mounted: true, quota: '5 TB per user · purge 30 d', status: 'Healthy' as const },
-  { name: '/shared', server: 'fs-shared', type: 'Lustre', sizeTB: 1.0, usedTB: 0.74, mounted: true, quota: '—', status: 'Healthy' as const },
-  { name: '/archive', server: 'fs-archive', type: 'NFS', sizeTB: 1.0, usedTB: 0.71, mounted: true, quota: '10 TB per group', status: 'Degraded' as const },
+  { name: '/home', server: 'fs-home.nucc.local', type: 'NFS', backend: 'NFSv4 · ZFS pool (RAID-Z2)', totalTB: 100, usedTB: 74.2, mounted: true, quota: '1.0 TB per user (hard)', health: 'Healthy' as const },
+  { name: '/scratch', server: 'fs-scratch.nucc.local', type: 'Lustre', backend: 'Lustre 2.15 (flock)', totalTB: 2048, usedTB: 1428, mounted: true, quota: '5.0 TB per user · purge 30 d', health: 'Healthy' as const },
+  { name: '/shared', server: 'fs-shared.nucc.local', type: 'Lustre', backend: 'Lustre 2.15 (no flock)', totalTB: 512, usedTB: 380, mounted: true, quota: 'Project quotas (RFM)', health: 'Healthy' as const },
+  { name: '/archive', server: 'fs-archive.nucc.local', type: 'NFS', backend: 'NFSv4 · ZFS pool + HSM tape tier', totalTB: 5120, usedTB: 3620, mounted: true, quota: '10 TB per group · migrate 90 d', health: 'Degraded' as const },
 ]
 
 export const USER_QUOTA = {
@@ -247,13 +247,13 @@ export const USER_QUOTA = {
 export const HEALTH_SERVICES = [
   { name: 'Slurm (controller)', kind: 'controller', status: 'Running' as const, detail: 'slurmctld 23.11.7 · enucc-mgmt-01' },
   { name: 'Partitions', kind: 'scheduler', status: 'Running' as const, detail: '4 partitions scheduled normally' },
-  { name: 'Filesystems (Lustre)', kind: 'storage', status: 'Running' as const, detail: '3 of 4 targets healthy · /archive degraded (1 OST)' },
+  { name: 'Filesystems (Lustre)', kind: 'storage', status: 'Running' as const, detail: '3 of 4 targets healthy · /archive degraded (1 NFS export)' },
   { name: 'Authentication (LDAP)', kind: 'auth', status: 'Running' as const, detail: 'slapd · enucc-mgmt-02' },
   { name: 'Monitoring (Prometheus)', kind: 'monitor', status: 'Running' as const, detail: 'Prometheus 2.53 + Grafana · enucc-mgmt-03' },
 ] as const
 
 export const SYS_ALERTS = [
-  { id: 1, severity: 'warning', title: '/archive filesystem OST 12 degraded', time: 'Today, 09:41', service: 'Filesystems (Lustre)', detail: 'One object storage target is responding slowly; I/O retries elevated. No data loss detected.' },
+  { id: 1, severity: 'warning', title: '/archive NFS export degraded', time: 'Today, 09:41', service: 'Filesystems (NFS)', detail: 'Export fs-archive:0 failed over to nfs-archive-02 after a backend-path outage; I/O retries elevated. No data loss detected.' },
   { id: 2, severity: 'info', title: 'Slurm 23.11.8 patch release available', time: 'Yesterday, 16:02', service: 'Slurm (controller)', detail: 'Advisory RHSA-2026:1042 fixes scheduling edge case with preemption. Recommended during next maintenance window.' },
   { id: 3, severity: 'critical', title: 'enucc-gpu-003 unreachable', time: 'Yesterday, 14:26', service: 'Nodes', detail: 'Node stopped reporting to slurmctld; IPMI console shows POST failure. Drained automatically, hardware ticket HW-4471 opened.' },
   { id: 4, severity: 'info', title: 'Scratch purge completed', time: 'Nov 14, 02:00', service: 'Filesystems (Lustre)', detail: 'Weekly purge reclaimed 14.2 TB on /scratch. Next purge scheduled Nov 21 02:00.' },
@@ -266,7 +266,7 @@ export const ACTIVITY_LOG = [
   { id: 4, ts: 'Today, 10:11:02', kind: 'node', text: 'enucc-cpu-004 set DRAINING by admin (pending maintenance)' },
   { id: 5, ts: 'Today, 10:04:11', kind: 'job', text: 'Job 489276 (viz_render) submitted by m.ross to gpu' },
   { id: 6, ts: 'Today, 09:58:09', kind: 'job', text: 'Job 489254 (mesh_analysis) submitted by l.patel to himem' },
-  { id: 7, ts: 'Today, 09:41:03', kind: 'alert', text: 'Warning raised on /archive OST 12' },
+  { id: 7, ts: 'Today, 09:41:03', kind: 'alert', text: 'Warning raised on /archive NFS export' },
   { id: 8, ts: 'Today, 09:35:47', kind: 'completed', text: 'Job 489208 (thermal_sim) completed · 4h 02m' },
   { id: 9, ts: 'Today, 09:22:31', kind: 'completed', text: 'Job 489197 (genomics_align) completed · 1d 06h' },
   { id: 10, ts: 'Today, 09:10:02', kind: 'job', text: 'Job 489180 (monte_carlo) submitted by r.oconnell to compute' },
@@ -337,3 +337,128 @@ export function seriesPoints(data: number[], w: number, h: number, pad = 0): Arr
 }
 
 export { linePath, areaPath }
+
+// Filesystem infrastructure, quotas, alerts and synthetic performance seeds. Single
+// source of truth for mockup-05 storage: kept internally consistent and coherent with
+// the HUD narrative (/archive degraded via a degraded NFS export).
+export type FsHealth = 'Healthy' | 'Degraded' | 'Critical' | 'Offline'
+
+export type FsSeriesSeed = Record<'1h' | '6h' | '24h' | '7d', { seed: number; base: number; amp: number }>
+
+const fsSeed = (seed: number, h00: [number, number], h06: [number, number], h24: [number, number], d07: [number, number]): FsSeriesSeed => ({
+  '1h': { seed, base: h00[0], amp: h00[1] },
+  '6h': { seed, base: h06[0], amp: h06[1] },
+  '24h': { seed, base: h24[0], amp: h24[1] },
+  '7d': { seed, base: d07[0], amp: d07[1] },
+})
+
+export const FS_PERF_SOURCE: Record<string, Record<'read' | 'write' | 'iops' | 'meta', FsSeriesSeed | null>> = {
+  '/home': {
+    read: fsSeed(301, [690, 130], [660, 190], [620, 240], [590, 300]),
+    write: fsSeed(302, [470, 110], [450, 160], [430, 200], [400, 260]),
+    iops: fsSeed(303, [8600, 1400], [8000, 2200], [7500, 3000], [6800, 3600]),
+    meta: null,
+  },
+  '/scratch': {
+    read: fsSeed(311, [9200, 1600], [8700, 2400], [8100, 3200], [7600, 4200]),
+    write: fsSeed(312, [7800, 1500], [7400, 2200], [6900, 3000], [6300, 3900]),
+    iops: fsSeed(313, [42000, 6000], [39000, 9000], [36000, 13000], [32000, 17000]),
+    meta: fsSeed(314, [3100, 400], [2900, 700], [2600, 1000], [2300, 1300]),
+  },
+  '/shared': {
+    read: fsSeed(321, [1100, 200], [1050, 320], [990, 420], [920, 520]),
+    write: fsSeed(322, [820, 160], [780, 240], [730, 330], [670, 420]),
+    iops: fsSeed(323, [9800, 1500], [9200, 2400], [8500, 3200], [7700, 4000]),
+    meta: fsSeed(324, [830, 120], [790, 180], [730, 260], [660, 340]),
+  },
+  '/archive': {
+    read: fsSeed(331, [95, 25], [90, 35], [85, 45], [78, 55]),
+    write: fsSeed(332, [60, 18], [57, 25], [53, 33], [48, 42]),
+    iops: fsSeed(333, [640, 150], [610, 210], [570, 280], [520, 340]),
+    meta: null,
+  },
+}
+
+export interface FsQuotaRow { type: 'User' | 'Group' | 'Project'; principal: string; usedGB: number; softGB: number; hardGB: number; grace?: string }
+export const FS_QUOTAS: Record<string, FsQuotaRow[]> = {
+  '/home': [
+    { type: 'User', principal: 'arun.bhatti', usedGB: 412, softGB: 900, hardGB: 1024 },
+    { type: 'Project', principal: 'genomics-core', usedGB: 38700, softGB: 60000, hardGB: 65536 },
+    { type: 'Project', principal: 'astro-lrg', usedGB: 14100, softGB: 18000, hardGB: 20480 },
+  ],
+  '/scratch': [
+    { type: 'User', principal: 'arun.bhatti', usedGB: 1830, softGB: 4608, hardGB: 5120 },
+    { type: 'Project', principal: 'genomics-core', usedGB: 613700, softGB: 760000, hardGB: 786432 },
+    { type: 'Project', principal: 'astro-lrg', usedGB: 431000, softGB: 560000, hardGB: 589824 },
+  ],
+  '/shared': [
+    { type: 'Group', principal: 'bioinformatics', usedGB: 197, softGB: 256, hardGB: 512 },
+    { type: 'Project', principal: 'genomics-core', usedGB: 141000, softGB: 200000, hardGB: 225280 },
+  ],
+  '/archive': [
+    { type: 'User', principal: 'arun.bhatti', usedGB: 204, softGB: 8704, hardGB: 10240 },
+    { type: 'Project', principal: 'astro-lrg', usedGB: 1726000, softGB: 2400000, hardGB: 2621440 },
+  ],
+}
+
+export interface FsAlert { severity: 'Informational' | 'Warning' | 'Critical'; title: string; component: string; description: string; timestamp: string; status: 'Active' | 'Acknowledged' | 'Resolved' }
+
+export const FS_ALERTS: Record<string, FsAlert[]> = {
+  '/home': [
+    { severity: 'Informational', title: 'Weekly scrub completed', component: 'export /home', description: 'Weekly rsync scrub verified 1,204,551 files (2.03% mismatch rate, within tolerance).', timestamp: 'Nov 16 02:00', status: 'Resolved' },
+  ],
+  '/scratch': [
+    { severity: 'Informational', title: 'Scratch purge completed', component: 'Policy Engine', description: 'Purge removed 48.7 TB of files unused \u2265 30 days; freed space immediately available.', timestamp: 'Nov 14 02:00', status: 'Resolved' },
+    { severity: 'Informational', title: 'OST 41 rebalanced', component: 'lfs-mgs', description: 'OST 41 usage normalised to 61% after rebalance finished; no user impact.', timestamp: 'Nov 15 09:12', status: 'Resolved' },
+  ],
+  '/shared': [
+    { severity: 'Warning', title: 'Project quota nearing soft limit', component: 'project genomics-core', description: 'genomics-core has used 70% of its 200 TB soft limit; RFM notified \u2014 no service impact.', timestamp: 'Today 08:05', status: 'Acknowledged' },
+  ],
+  '/archive': [
+    { severity: 'Warning', title: 'Export fs-archive:0 degraded after backend-path outage', component: 'Export fs-archive:0 on nfs-archive-01', description: 'NFS backend path on nfs-archive-01 became unresponsive; mount failed over to nfs-archive-02 and I/O retries elevated. Writes to /archive slowed; reads unaffected after recovery. Follow INC-1042.', timestamp: 'Today 09:41', status: 'Active' },
+    { severity: 'Informational', title: 'Tape staging lag cleared', component: 'HSM layer', description: 'Tape staging backlog aged 3\u20135 days drained; recall times normal.', timestamp: 'Nov 15 14:30', status: 'Resolved' },
+  ],
+}
+
+// Per-filesystem infrastructure components: Lustre targets (MGS/MDS/MDT/OSS/OST)
+// and NFS servers+exports. Capacities in TB; utilPct in percent; jobs = active I/O jobs.
+export interface FsInfraComp {
+  id: string
+  role: string
+  host: string
+  index?: string
+  capacityTB?: number
+  utilPct?: number
+  health: 'Healthy' | 'Degraded' | 'Down'
+  jobs?: number
+}
+export const FS_INFRA: Record<string, FsInfraComp[]> = {
+  '/home': [
+    { id: 'nfs-h0', role: 'NFS server', host: 'nfs-home-01.nucc.local', health: 'Healthy', jobs: 14 },
+    { id: 'nfs-h1', role: 'Export', host: 'fs-home.nucc.local', index: '/export/home', capacityTB: 100, utilPct: 74, health: 'Healthy', jobs: 14 },
+  ],
+  '/scratch': [
+    { id: 'lts-0', role: 'MGS', host: 'lfs-mgs.nucc.local', health: 'Healthy', jobs: 0 },
+    { id: 'lts-1', role: 'MDS', host: 'lfs-mds-01.nucc.local', health: 'Healthy', jobs: 96 },
+    { id: 'lts-2', role: 'MDT', host: 'lfs-mds-01.nucc.local', index: 'MDT0000', capacityTB: 32, utilPct: 41, health: 'Healthy', jobs: 96 },
+    { id: 'lts-3', role: 'OSS', host: 'lfs-oss-01.nucc.local', health: 'Healthy', jobs: 610 },
+    { id: 'lts-4', role: 'OSS', host: 'lfs-oss-02.nucc.local', health: 'Healthy', jobs: 588 },
+    { id: 'lts-5', role: 'OST', host: 'lfs-oss-01.nucc.local', index: 'OST0000', capacityTB: 256, utilPct: 66, health: 'Healthy', jobs: 305 },
+    { id: 'lts-6', role: 'OST', host: 'lfs-oss-01.nucc.local', index: 'OST0001', capacityTB: 256, utilPct: 71, health: 'Healthy', jobs: 305 },
+    { id: 'lts-7', role: 'OST', host: 'lfs-oss-02.nucc.local', index: 'OST0002', capacityTB: 256, utilPct: 58, health: 'Healthy', jobs: 294 },
+    { id: 'lts-8', role: 'OST', host: 'lfs-oss-02.nucc.local', index: 'OST0003', capacityTB: 256, utilPct: 63, health: 'Healthy', jobs: 294 },
+  ],
+  '/shared': [
+    { id: 'lsh-0', role: 'MGS', host: 'lfs-mgs.nucc.local', health: 'Healthy', jobs: 0 },
+    { id: 'lsh-1', role: 'MDS', host: 'lfs-mds-02.nucc.local', health: 'Healthy', jobs: 22 },
+    { id: 'lsh-2', role: 'MDT', host: 'lfs-mds-02.nucc.local', index: 'MDT0000', capacityTB: 16, utilPct: 37, health: 'Healthy', jobs: 22 },
+    { id: 'lsh-3', role: 'OSS', host: 'lfs-oss-03.nucc.local', health: 'Healthy', jobs: 140 },
+    { id: 'lsh-4', role: 'OST', host: 'lfs-oss-03.nucc.local', index: 'OST0000', capacityTB: 248, utilPct: 76, health: 'Healthy', jobs: 140 },
+  ],
+  '/archive': [
+    { id: 'lar-0', role: 'NFS server', host: 'nfs-archive-01.nucc.local', health: 'Degraded', jobs: 8 },
+    { id: 'lar-1', role: 'NFS server', host: 'nfs-archive-02.nucc.local', health: 'Healthy', jobs: 6 },
+    { id: 'lar-2', role: 'Export', host: 'fs-archive.nucc.local', index: '/export/archive', capacityTB: 5120, utilPct: 71, health: 'Healthy', jobs: 14 },
+    { id: 'lar-3', role: 'HSM layer', host: 'tape-robot-01.nucc.local', health: 'Healthy', jobs: 3 },
+  ],
+}

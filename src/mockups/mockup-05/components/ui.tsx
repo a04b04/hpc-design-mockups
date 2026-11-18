@@ -348,7 +348,7 @@ export type A5Route =
   | { page: 'dashboard' } | { page: 'nodes'; partition?: string } | { page: 'node'; node: string }
   | { page: 'partitions' } | { page: 'partition'; partition: string } | { page: 'reservations' } | { page: 'resv'; resv: string }
   | { page: 'jobs'; partition?: string } | { page: 'jb'; jobId: number } | { page: 'submit-job'; partition?: string } | { page: 'job-templates' } | { page: 'job-history' }
-  | { page: 'filesystems' } | { page: 'file-browser' } | { page: 'quotas' }
+  | { page: 'filesystems' } | { page: 'fs'; fs: string } | { page: 'file-browser' } | { page: 'quotas' }
   | { page: 'cluster-health' } | { page: 'resource-utilisation' } | { page: 'alerts' }
   | { page: 'terminal' } | { page: 'remote-desktop' }
   | { page: 'users' } | { page: 'slurm-accounts' } | { page: 'qos' } | { page: 'node-mgmt' } | { page: 'configuration' }
@@ -362,6 +362,7 @@ export function routeToHash(r: A5Route): string {
   if (r.page === 'partition') return `#/mockup-05/partitions/${r.partition}`
   if (r.page === 'resv') return `#/mockup-05/reservations/${r.resv}`
   if (r.page === 'jb') return `#/mockup-05/jobs/${r.jobId}`
+  if (r.page === 'fs') return `#/mockup-05/filesystems/${r.fs}`
   const q = (r.page === 'nodes' || r.page === 'jobs') && r.partition ? `?partition=${r.partition}` : ''
   return `#/mockup-05/${r.page}${q}`
 }
@@ -377,6 +378,7 @@ export function parseHash(hash: string): A5Route | null {
   if (seg === 'nodes' && arg) return { page: 'node', node: arg }
   if (seg === 'partitions' && arg) return { page: 'partition', partition: arg }
   if (seg === 'reservations' && arg) return { page: 'resv', resv: arg }
+  if (seg === 'filesystems' && arg) return { page: 'fs', fs: arg }
   if (seg === 'jobs' && arg) return { page: 'jb', jobId: Number(arg) }
   if (part && (seg === 'nodes' || seg === 'jobs')) return { page: seg, partition: part } as A5Route
   const known = ['dashboard', 'nodes', 'partitions', 'reservations', 'jobs', 'submit-job', 'job-templates', 'job-history', 'filesystems', 'file-browser', 'quotas', 'cluster-health', 'resource-utilisation', 'alerts', 'terminal', 'remote-desktop', 'users', 'slurm-accounts', 'qos', 'node-mgmt', 'configuration']

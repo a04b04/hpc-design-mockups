@@ -26,7 +26,7 @@ export function ClusterHealthPage() {
     { svc: 'Scheduler partitions', host: '—', status: 'Running', detail: '4 partitions · backfill active' },
     { svc: 'Filesystem fs-home (NFS)', host: 'fs-home', status: 'Running', detail: '1.0 TB · 73% used' },
     { svc: 'Filesystem /scratch (Lustre)', host: 'fs-scratch', status: 'Running', detail: '2.0 TB · 70% used' },
-    { svc: 'Filesystem /archive (NFS)', host: 'fs-archive', status: 'Degraded', detail: 'OST 12 responding slowly' },
+    { svc: 'Filesystem /archive (NFS)', host: 'fs-archive', status: 'Degraded', detail: 'Export fs-archive:0 failed over after backend-path outage' },
     { svc: 'Authentication (LDAP)', host: 'enucc-mgmt-02', status: 'Running', detail: 'slapd · replication in sync' },
     { svc: 'Monitoring (Prometheus + Grafana)', host: 'enucc-mgmt-03', status: 'Running', detail: 'Scrape health 100% · 128 targets' },
   ]
@@ -131,68 +131,6 @@ export function AlertsPage() {
   )
 }
 
-export function FileBrowserPage() {
-  const [cwd, setCwd] = useState<string[]>(['home', 'arun.bhatti'])
-  const dirs: Record<string, Array<{ name: string; kind: 'dir' | 'file'; size?: string }>> = {
-    'home/arun.bhatti': [
-      { name: 'projects', kind: 'dir' }, { name: 'slurm-logs', kind: 'dir' }, { name: 'datasets', kind: 'dir' },
-      { name: 'README.md', kind: 'file', size: '2.1 KB' }, { name: 'submit.sh', kind: 'file', size: '812 B' },
-    ],
-    'home/arun.bhatti/projects': [
-      { name: 'lennard-jones', kind: 'dir' }, { name: 'vis-pipeline', kind: 'dir' }, { name: 'train_cnn.py', kind: 'file', size: '12 KB' },
-    ],
-    'home/arun.bhatti/slurm-logs': [
-      { name: 'job-489347.out', kind: 'file', size: '184 KB' }, { name: 'job-489322.out', kind: 'file', size: '96 KB' },
-    ],
-    'home/arun.bhatti/datasets': [
-      { name: 'imagenet-subset.tar', kind: 'file', size: '48.2 GB' }, { name: 'md-trajectories.h5', kind: 'file', size: '128 GB' },
-    ],
-  }
-  const key = cwd.join('/')
-  const rows = dirs[key] ?? []
-  return (
-    <>
-      <Breadcrumbs items={[{ label: 'Storage' }, { label: 'File Browser' }]} />
-      <div className="a5-pagehead-row">
-        <div>
-          <h1 className="aws5-h1">File Browser</h1>
-          <div className="a5-pagehead-sub mono">fs-home:/{key}</div>
-        </div>
-      </div>
-      <Card>
-        <CardB>
-          <div className="a5-crumbs-row">
-            <button className="a5-crumb-link" onClick={() => setCwd(['home', 'arun.bhatti'])}>~</button>
-            {cwd.slice(2).map((seg, i) => (
-              <button key={i} className="a5-crumb-link" onClick={() => setCwd(cwd.slice(0, 3 + i))}>{seg}</button>
-            ))}
-          </div>
-          <table className="aws5-table">
-            <thead><tr><th>Name</th><th>Type</th><th>Size</th><th /></tr></thead>
-            <tbody>
-              {cwd.length > 2 && (
-                <tr><td><button className="a5-name-link" onClick={() => setCwd(cwd.slice(0, -1))}>../</button></td><td>directory</td><td className="sub">—</td><td /></tr>
-              )}
-              {rows.map((r) => (
-                <tr key={r.name}>
-                  <td>
-                    {r.kind === 'dir'
-                      ? <button className="a5-name-link mono" onClick={() => setCwd([...cwd, r.name])}>{r.name}/</button>
-                      : <span className="mono">{r.name}</span>}
-                  </td>
-                  <td className="sub">{r.kind}</td>
-                  <td className="mono">{r.size ?? '—'}</td>
-                  <td className="a5-c"><button className="a5-name-link" onClick={() => emitToast('info', `${r.kind === 'dir' ? 'Download (recursive)' : 'Download'} ${r.name} — simulated`)}>Download</button></td>
-                </tr>
-              ))}
-              {rows.length === 0 && <tr><td colSpan={4} className="a5-empty">Directory is empty.</td></tr>}
-            </tbody>
-          </table>
-        </CardB>
-      </Card>
-    </>
-  )
-}
 
 export function TerminalPage({ role, onOpenSession }: { role: 'admin' | 'user'; onOpenSession: (node: string) => void }) {
   const pool = role === 'admin' ? NODES : NODES.filter((n) => n.state !== 'DOWN')

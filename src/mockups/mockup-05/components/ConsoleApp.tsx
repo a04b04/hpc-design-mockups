@@ -15,12 +15,13 @@ import { JobTemplatesPage } from '../pages/job-templates'
 import { PartitionsPage, PartitionDetailPage } from '../pages/partitions'
 import { ReservationsPage, ReservationDetailPage } from '../pages/reservations'
 import { SlurmAccountsPage, UsersPage } from '../pages/cluster-pages'
-import { FilesystemsPage, QuotasPage } from '../pages/storage-pages'
+import { FilesystemsPage, FilesystemDetailPage, QuotasPage } from '../pages/storage-pages'
 import { SubmitJobPage } from '../pages/submit-job'
 import {
-  AlertsPage, ClusterHealthPage, ConfigurationPage, FileBrowserPage, NodeManagementPage,
+  AlertsPage, ClusterHealthPage, ConfigurationPage, NodeManagementPage,
   QosPage, RemoteDesktopPage, ResourceUtilisationPage, TerminalPage,
 } from '../pages/monitoring-pages'
+import { FileBrowserPage } from '../pages/file-browser'
 
 import '../styles/styles.css'
 
@@ -101,6 +102,7 @@ export default function ConsoleApp() {
       case 'job-templates': return <JobTemplatesPage />
       case 'job-history': return <JobHistoryPage />
       case 'filesystems': return <FilesystemsPage />
+      case 'fs': return 'fs' in route ? <FilesystemDetailPage fsKey={route.fs} role={role} /> : null
       case 'file-browser': return <FileBrowserPage />
       case 'quotas': return <QuotasPage role={role} />
       case 'cluster-health': return <ClusterHealthPage />
