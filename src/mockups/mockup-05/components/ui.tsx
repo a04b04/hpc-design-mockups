@@ -133,12 +133,35 @@ export function SortableTh({ label, col, sort, onSort, width, center }: { label:
 }
 
 // Menus -----------------------------------------------------------------
+// Custom MenuWrap triggers (icon-only row buttons) previously rendered without
+// any onClick, leaving their menus dead. Wrapping preserves their props while
+// adding toggle behaviour.
+function BtnWrap({ onToggle, children }: { onToggle: () => void; children: ReactNode }) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      style={{ display: 'inline-flex', lineHeight: 1, cursor: 'pointer' }}
+      onClick={onToggle}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } }}
+    >
+      {children}
+    </span>
+  )
+}
+
 export function MenuWrap({ label, items, button, align }: {
   label?: string
   items: Array<{ label: string; onClick?: () => void; kind?: 'danger' | 'warn'; sep?: boolean; icon?: string; disabled?: boolean }>
   button?: ReactNode
   align?: 'right'
 }) {
+  const toggle = () => setOpen(o => !o)
+  const trigger: ReactNode = button
+    ? <BtnWrap onToggle={toggle}>{button}</BtnWrap>
+    : (
+      <button className="aws5-btn aws5-btn--outline aws5-btn--sm" onClick={toggle} aria-haspopup="menu">{label}<Lucide.ChevronDown size={13} /></button>
+    )
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -149,9 +172,7 @@ export function MenuWrap({ label, items, button, align }: {
   }, [open])
   return (
     <div className="aws5-menuwrap" ref={ref}>
-      {button ?? (
-        <button className="aws5-btn aws5-btn--outline aws5-btn--sm" onClick={() => setOpen(!open)} aria-haspopup="menu">{label}<Lucide.ChevronDown size={13} /></button>
-      )}
+      {trigger}
       {open && (
         <div className={`aws5-menu${align === 'right' ? ' right' : ''}`} role="menu">
           {items.map((it, i) => it.sep ? (
@@ -325,7 +346,7 @@ export function Sparkline({ data, color = 'blue', width = 90, height = 26 }: { d
 // Router ----------------------------------------------------------------
 export type A5Route =
   | { page: 'dashboard' } | { page: 'nodes'; partition?: string } | { page: 'node'; node: string }
-  | { page: 'partitions' } | { page: 'partition'; partition: string } | { page: 'reservations' }
+  | { page: 'partitions' } | { page: 'partition'; partition: string } | { page: 'reservations' } | { page: 'resv'; resv: string }
   | { page: 'jobs'; partition?: string } | { page: 'submit-job'; partition?: string } | { page: 'job-templates' } | { page: 'job-history' }
   | { page: 'filesystems' } | { page: 'file-browser' } | { page: 'quotas' }
   | { page: 'cluster-health' } | { page: 'resource-utilisation' } | { page: 'alerts' }
@@ -339,6 +360,7 @@ export const A5_NAV_PERMISSIONS: Record<string, 'all' | 'admin'> = {
 export function routeToHash(r: A5Route): string {
   if (r.page === 'node') return `#/mockup-05/nodes/${r.node}`
   if (r.page === 'partition') return `#/mockup-05/partitions/${r.partition}`
+  if (r.page === 'resv') return `#/mockup-05/reservations/${r.resv}`
   const q = (r.page === 'nodes' || r.page === 'jobs') && r.partition ? `?partition=${r.partition}` : ''
   return `#/mockup-05/${r.page}${q}`
 }
@@ -353,6 +375,7 @@ export function parseHash(hash: string): A5Route | null {
   const [, seg, arg, part] = m
   if (seg === 'nodes' && arg) return { page: 'node', node: arg }
   if (seg === 'partitions' && arg) return { page: 'partition', partition: arg }
+  if (seg === 'reservations' && arg) return { page: 'resv', resv: arg }
   if (part && (seg === 'nodes' || seg === 'jobs')) return { page: seg, partition: part } as A5Route
   const known = ['dashboard', 'nodes', 'partitions', 'reservations', 'jobs', 'submit-job', 'job-templates', 'job-history', 'filesystems', 'file-browser', 'quotas', 'cluster-health', 'resource-utilisation', 'alerts', 'terminal', 'remote-desktop', 'users', 'slurm-accounts', 'qos', 'node-mgmt', 'configuration']
   if (known.includes(seg)) return { page: seg } as A5Route

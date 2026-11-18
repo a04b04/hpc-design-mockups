@@ -13,7 +13,8 @@ import { JobsPage } from '../pages/jobs'
 import { JobHistoryPage } from '../pages/job-history'
 import { JobTemplatesPage } from '../pages/job-templates'
 import { PartitionsPage, PartitionDetailPage } from '../pages/partitions'
-import { ReservationsPage, SlurmAccountsPage, UsersPage } from '../pages/cluster-pages'
+import { ReservationsPage, ReservationDetailPage } from '../pages/reservations'
+import { SlurmAccountsPage, UsersPage } from '../pages/cluster-pages'
 import { FilesystemsPage, QuotasPage } from '../pages/storage-pages'
 import { SubmitJobPage } from '../pages/submit-job'
 import {
@@ -92,7 +93,8 @@ export default function ConsoleApp() {
       case 'node': return 'node' in route ? <NodeDetailPage nodeName={route.node} role={role} onOpenSession={openSession} /> : null
       case 'partitions': return <PartitionsPage />
       case 'partition': return 'partition' in route ? <PartitionDetailPage name={route.partition} role={role} /> : null
-      case 'reservations': return <ReservationsPage />
+      case 'reservations': return <ReservationsPage role={role} />
+      case 'resv': return 'resv' in route ? <ReservationDetailPage name={route.resv} role={role} /> : null
       case 'jobs': return 'partition' in route && route.partition ? <JobsPage initialPartition={route.partition} /> : <JobsPage />
       case 'submit-job': return <SubmitJobPage />
       case 'job-templates': return <JobTemplatesPage />

@@ -3,39 +3,7 @@ import * as Lucide from 'lucide-react'
 import {
   Breadcrumbs, StateChipText, emitToast,
 } from '../components/ui'
-import { RESERVATIONS, USERS } from '../data'
-
-export function ReservationsPage() {
-  return (
-    <>
-      <Breadcrumbs items={[{ label: 'Compute' }, { label: 'Reservations' }]} />
-      <div className="a5-pagehead-row">
-        <div>
-          <h1 className="aws5-h1">Reservations</h1>
-          <div className="a5-pagehead-sub">3 active or upcoming reservations (scontrol show reservation)</div>
-        </div>
-      </div>
-      <div className="aws5-table-wrap">
-        <table className="aws5-table">
-          <thead><tr><th>Reservation</th><th>Partition</th><th>Nodes</th><th>Start</th><th>End</th><th>Users</th><th>State</th></tr></thead>
-          <tbody>
-            {RESERVATIONS.map((r) => (
-              <tr key={r.name}>
-                <td className="mono">{r.name}</td>
-                <td>{r.partition}</td>
-                <td className="mono">{r.nodes}</td>
-                <td className="sub">{r.start}</td>
-                <td className="sub">{r.end}</td>
-                <td className="sub">{r.users}</td>
-                <td><StateChipText text={r.state} kind={r.state === 'ACTIVE' ? 'green' : 'blue'} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  )
-}
+import { USERS } from '../data'
 
 export function UsersPage() {
   const [q, setQ] = useState('')
