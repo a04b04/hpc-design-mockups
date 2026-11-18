@@ -9,7 +9,7 @@ import type { Role } from '../data'
 import { DashboardPage } from '../pages/dashboard'
 import { NodesPage } from '../pages/nodes'
 import { NodeDetailPage } from '../pages/node-detail'
-import { JobsPage } from '../pages/jobs'
+import { JobDetailPage, JobsPage } from '../pages/jobs'
 import { JobHistoryPage } from '../pages/job-history'
 import { JobTemplatesPage } from '../pages/job-templates'
 import { PartitionsPage, PartitionDetailPage } from '../pages/partitions'
@@ -95,7 +95,8 @@ export default function ConsoleApp() {
       case 'partition': return 'partition' in route ? <PartitionDetailPage name={route.partition} role={role} /> : null
       case 'reservations': return <ReservationsPage role={role} />
       case 'resv': return 'resv' in route ? <ReservationDetailPage name={route.resv} role={role} /> : null
-      case 'jobs': return 'partition' in route && route.partition ? <JobsPage initialPartition={route.partition} /> : <JobsPage />
+      case 'jobs': return 'partition' in route && route.partition ? <JobsPage role={role} initialPartition={route.partition} /> : <JobsPage role={role} />
+      case 'jb': return 'jobId' in route ? <JobDetailPage jobId={route.jobId} role={role} /> : null
       case 'submit-job': return <SubmitJobPage />
       case 'job-templates': return <JobTemplatesPage />
       case 'job-history': return <JobHistoryPage />

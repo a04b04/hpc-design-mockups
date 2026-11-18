@@ -1816,3 +1816,60 @@
 .res-tight .res-tnodes { white-space: nowrap; }
 .res-idlesub { margin-left: 6px; font-family: var(--font-sans, inherit); font-size: 11px; color: var(--txt-mut, #7b8798); font-weight: 400; }
 .aws5.aws5-dark .res-idlesub { color: #8b98a9; }
+
+/* ================= Slurm Jobs page (mockup-05) ================= */
+
+/* Interactive state KPI cards */
+.a5-statecard { cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.a5-statecard:hover { border-color: var(--a5-blue); }
+.a5-statecard--sel { border-color: var(--a5-blue); box-shadow: 0 0 0 1px var(--a5-blue) inset; }
+.a5-statecard-hint { margin-top: 6px; font-size: 10.5px; color: var(--a5-mute); }
+.a5-statecard--sel .a5-statecard-hint { color: var(--a5-blue); }
+
+/* Filter bar clear button */
+.a5-clearbtn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--a5-line); background: var(--a5-card); color: var(--a5-fg);
+  font-size: 12px; border-radius: 6px; padding: 5px 10px; cursor: pointer;
+}
+.a5-clearbtn:hover { border-color: var(--a5-blue); color: var(--a5-blue); }
+.a5-clearbtn--off { opacity: 0.45; cursor: default; }
+.a5-clearbtn--off:hover { border-color: var(--a5-line); color: var(--a5-fg); }
+
+/* Pending-reason callout on the detail page */
+.j-reasoncard {
+  border: 1px solid var(--a5-amber-fill, #b4530922);
+  background: var(--a5-amber-fill, rgba(180, 83, 9, 0.08));
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;
+}
+.j-reasoncard-t { display: flex; align-items: center; gap: 7px; font-weight: 650; font-size: 13px; margin-bottom: 3px; }
+.j-reasoncard-b { font-size: 12.5px; color: var(--a5-mute); }
+
+/* Quick-view modal */
+.j-modgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.j-modh { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--a5-mute); margin-bottom: 6px; }
+.j-pre-sm { padding: 8px 10px; font-size: 11.5px; margin-top: 4px; }
+
+/* Output / script blocks */
+.j-out { max-height: 420px; overflow: auto; padding: 10px 12px; font-size: 11.5px; margin: 0; }
+.j-utilext { font-variant-numeric: tabular-nums; }
+
+/* Detail page timeline */
+.j-timeline { display: flex; flex-direction: column; gap: 0; }
+.j-tl-row { position: relative; display: flex; align-items: baseline; gap: 12px; padding: 7px 0 7px 18px; border-left: 1px solid var(--a5-line-soft); margin-left: 4px; }
+.j-tl-row:last-child { border-left-color: transparent; }
+.j-tl-dot { position: absolute; left: -4.5px; top: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--a5-blue); border: 2px solid var(--a5-card); }
+.j-tl-t { min-width: 150px; font-variant-numeric: tabular-nums; }
+
+/* Danger button for the cancel dialog */
+.aws5-btn--danger { background: var(--a5-red); border-color: var(--a5-red); color: #fff; }
+.aws5-btn--danger:hover { filter: brightness(1.06); }
+
+/* Hide the placeholder icon inside state cards */
+.a5-hide { display: none; }
+
+/* Dark overrides */
+.aws5.aws5-dark .j-reasoncard { border-color: rgba(180, 83, 9, 0.35); background: rgba(180, 83, 9, 0.12); }
+.aws5.aws5-dark .j-tl-dot { border-color: #161d26; }
+.aws5.aws5-dark .a5-clearbtn { background: #1a222c; }
+.aws5.aws5-dark .aws5-btn--danger { color: #fff; }
