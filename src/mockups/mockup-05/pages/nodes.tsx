@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as Lucide from 'lucide-react'
 import {
   Breadcrumbs, CountCard, MenuWrap, Pagination, SortableTh, StateChipText, StateDotChip, emitToast, navTo,
 } from '../components/ui'
 import { NODES, PARTITIONS } from '../data'
 import type { EnNode, Role, SlurmState } from '../data'
+import { NodesCardView, NodesMatrixView, NodesViewSelector, loadNodesView } from './nodes-views'
+import type { NodesViewMode } from './nodes-views'
 
 type SortCol = 'name' | 'state' | 'partition' | 'cores' | 'memGB' | 'jobs' | 'uptime'
 
@@ -17,6 +19,12 @@ export function NodesPage({ role }: { role: Role }) {
   const [sort, setSort] = useState<{ col: SortCol; asc: boolean }>({ col: 'name', asc: true })
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [viewMode, setViewMode] = useState<NodesViewMode>(loadNodesView)
+
+  useEffect(() => {
+    try { localStorage.setItem('enucc5.nodesView', viewMode) } catch { /* ignore */ }
+  }, [viewMode])
+
   const PER = 12
 
   const filtered = useMemo(() => {
@@ -40,6 +48,12 @@ export function NodesPage({ role }: { role: Role }) {
       }
     })
   }, [q, state, partition, sort])
+
+  const matrixFilterDesc = useMemo(() => [
+    state === 'all' ? 'all states' : `state: ${state}`,
+    partition === 'all' ? 'all partitions' : `partition: ${partition}`,
+    q ? `search: “${q}”` : '',
+  ].filter(Boolean).join(' · '), [state, partition, q])
 
   const pages = Math.max(1, Math.ceil(filtered.length / PER))
   const cur = Math.min(page, pages)
@@ -68,6 +82,7 @@ export function NodesPage({ role }: { role: Role }) {
           <div className="a5-pagehead-sub">{NODES.length} nodes across {PARTITIONS.length} partitions</div>
         </div>
         <div className="a5-pagehead-actions">
+          <NodesViewSelector view={viewMode} onChange={setViewMode} />
           <button className="aws5-btn aws5-btn--outline aws5-btn--sm" onClick={() => emitToast('info', 'Node list refreshed (simulated)')}><Lucide.RefreshCw size={13} />Refresh</button>
           {role === 'admin' && (
             <MenuWrap
@@ -113,6 +128,8 @@ export function NodesPage({ role }: { role: Role }) {
         )}
       </div>
 
+      {viewMode === 'table' && (
+        <>
       <div className="aws5-table-wrap">
         <table className="aws5-table">
           <thead>
@@ -179,6 +196,14 @@ export function NodesPage({ role }: { role: Role }) {
         total={filtered.length}
         showing={`Showing ${(cur - 1) * PER + 1}–${Math.min(cur * PER, filtered.length)} of ${filtered.length}`}
       />
+        </>
+      )}
+
+      {viewMode === 'cards' && <NodesCardView nodes={filtered} />}
+
+      {viewMode === 'matrix' && (
+        <NodesMatrixView nodes={filtered} clusterTotal={NODES.length} filterDesc={matrixFilterDesc} />
+      )}
     </>
   )
 }
