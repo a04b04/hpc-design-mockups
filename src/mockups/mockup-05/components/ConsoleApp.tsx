@@ -13,7 +13,8 @@ import { JobsPage } from '../pages/jobs'
 import { JobHistoryPage } from '../pages/job-history'
 import { JobTemplatesPage } from '../pages/job-templates'
 import { PartitionsPage, ReservationsPage, SlurmAccountsPage, UsersPage } from '../pages/cluster-pages'
-import { FilesystemsPage, QuotasPage, SubmitJobPage } from '../pages/storage-pages'
+import { FilesystemsPage, QuotasPage } from '../pages/storage-pages'
+import { SubmitJobPage } from '../pages/submit-job'
 import {
   AlertsPage, ClusterHealthPage, ConfigurationPage, FileBrowserPage, NodeManagementPage,
   QosPage, RemoteDesktopPage, ResourceUtilisationPage, TerminalPage,
