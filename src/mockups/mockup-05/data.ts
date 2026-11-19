@@ -52,6 +52,7 @@ export interface EnJob {
   account: string
   qos: string
   priority: number
+  module?: string
 }
 
 // ---------------------------------------------------------------- jobs --

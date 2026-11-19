@@ -133,7 +133,7 @@ export default function ConsoleApp() {
       case 'resv': return 'resv' in route ? <ReservationDetailPage name={route.resv} role={role} /> : null
       case 'jobs': return 'partition' in route && route.partition ? <JobsPage role={role} initialPartition={route.partition} /> : <JobsPage role={role} />
       case 'jb': return 'jobId' in route ? <JobDetailPage jobId={route.jobId} role={role} /> : null
-      case 'submit-job': return <SubmitJobPage />
+      case 'submit-job': return <SubmitJobPage key="submit-job" />
       case 'job-templates': return <JobTemplatesPage />
       case 'job-history': return <JobHistoryPage />
       case 'filesystems': return <FilesystemsPage />

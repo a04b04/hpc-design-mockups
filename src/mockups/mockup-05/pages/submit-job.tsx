@@ -1,10 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import * as Lucide from 'lucide-react'
 import { Breadcrumbs, Card, CardB, CardH, SysBanner, emitToast, navTo } from '../components/ui'
 import { JOBS, NODES, PARTITIONS, QOS_LIST } from '../data'
 import type { EnJob } from '../data'
+import { SOFTWARE, swModuleLine, swConflictsFor, swJobSuggestion, SW_DEPS_AUTO_RESOLVE, softwareRecord } from './software'
+import type { SwModulePick } from './software'
 
 type AdvField = 'ntasks' | 'ntasksPerNode' | 'arraySpec' | 'dependency' | 'outFile' | 'errFile' | 'workDir' | 'constraint' | 'gres' | 'notifyEmail'
 
@@ -80,22 +82,37 @@ function normalizeWall(raw: string): string {
   return s
 }
 
-function postLines(f: JobForm): string {
-  const l: string[] = ['', '# Workload — replace with your launcher']
-  if (f.partition === 'gpu') {
-    l.push('module load cuda/12.4', '', 'python train.py')
-  } else if (f.partition === 'himem') {
-    l.push('module load python/3.11', '', './analyse --input /shared/datasets/large.h5')
-  } else if (f.partition === 'login') {
-    l.push('# login partition is for interactive work — srun runs here, not sbatch')
-  } else {
-    l.push('module load gcc/13.2', '')
-    l.push(f.adv.arraySpec.trim() !== '' ? 'python sweep.py --task $SLURM_ARRAY_TASK_ID' : 'python run.py')
+function postLines(f: JobForm, mods: SwModulePick[]): string {
+  if (f.partition === 'login') {
+    return ['', '# login partition is for interactive work — srun runs here, not sbatch'].join('\n')
   }
-  return l.join('\n')
+  const lines: string[] = []
+  if (mods.length > 0) {
+    const seen: string[] = []
+    for (const m of mods) {
+      const line = `module load ${m.module}`
+      if (seen.includes(line)) continue
+      seen.push(line)
+      lines.push('', line)
+    }
+  }
+  lines.push('', '# Workload — replace with your launcher')
+  if (mods.length === 0) {
+    if (f.partition === 'gpu') {
+      lines.push('module load cuda/12.4', '', 'python train.py')
+    } else if (f.partition === 'himem') {
+      lines.push('module load python/3.11', '', './analyse --input /shared/datasets/large.h5')
+    } else {
+      lines.push('module load gcc/13.2', '')
+      lines.push(f.adv.arraySpec.trim() !== '' ? 'python sweep.py --task $SLURM_ARRAY_TASK_ID' : 'python run.py')
+    }
+  } else {
+    lines.push('./a.out  # replace with your launcher')
+  }
+  return lines.join('\n')
 }
 
-function generateScript(f: JobForm): string {
+function generateScript(f: JobForm, mods: SwModulePick[]): string {
   const a = f.adv
   const d: string[] = []
   if (f.name.trim() !== '') d.push(`#SBATCH --job-name=${f.name.trim()}`)
@@ -124,7 +141,7 @@ function generateScript(f: JobForm): string {
     d.push(`#SBATCH --mail-user=${a.notifyEmail.trim()}`)
   }
   if (a.workDir.trim() !== '') d.push(`#SBATCH --chdir=${a.workDir.trim()}`)
-  return `#!/bin/bash\n${d.join('\n')}${d.length > 0 ? '\n' : ''}${postLines(f)}`
+  return `#!/bin/bash\n${d.join('\n')}${d.length > 0 ? '\n' : ''}${postLines(f, mods)}`
 }
 
 function copy(text: string, label: string): void {
@@ -486,6 +503,37 @@ function InfoRow(p: { label: string; children: ReactNode }): ReactNode {
 // Simulated IDs continue after the highest seeded mock job.
 let JOB_SEQ = 489348
 
+const SW_HANDOFF_KEY = 'enucc5.swHandoff'
+
+type Handoff = {
+  appId: string
+  module: string
+  sug?: { partition: 'compute' | 'gpu' | 'himem'; gpus: number; example: string }
+}
+
+const pristineDefaults: Record<string, unknown> = { ...EMPTY_FORM, name: 'serial-analysis', walltime: '04:00:00' }
+for (const t of TEMPLATES) pristineDefaults[`${t.id}:name`] = t.fld.name
+pristineDefaults['serial:walltime'] = TEMPLATES[0]!.fld.walltime
+
+const isPristineName = (v: string, activeTpl: TplId): boolean =>
+  v === 'serial-analysis' || v === '' || (activeTpl !== '' && v === pristineDefaults[`${activeTpl}:name`])
+
+function isPristineField(f: JobForm, activeTpl: TplId): {
+  name: boolean; partition: boolean; gpus: boolean
+} {
+  const tplBase = activeTpl !== '' ? TEMPLATES.find((t) => t.id === activeTpl)?.fld : null
+  return {
+    name: isPristineName(f.name, activeTpl),
+    partition: f.partition === EMPTY_FORM.partition || (tplBase != null && f.partition === tplBase.partition),
+    gpus: f.gpus === EMPTY_FORM.gpus || f.gpus === (tplBase?.gpus ?? EMPTY_FORM.gpus),
+  }
+}
+
+const gpuRelevant = (appId: string): boolean => {
+  const s = swJobSuggestion(appId)
+  return s != null && s.gpus > 0
+}
+
 export function SubmitJobPage(): ReactNode {
   const [f, setF] = useState<JobForm>(() => ({ ...TEMPLATES[0]!.fld, adv: { ...TEMPLATES[0]!.fld.adv } }))
   const [advOpen, setAdvOpen] = useState(false)
@@ -497,7 +545,14 @@ export function SubmitJobPage(): ReactNode {
   const [submitted, setSubmitted] = useState<{ id: number; name: string } | null>(null)
   const valRef = useRef<HTMLDivElement | null>(null)
 
-  const gen = useMemo(() => generateScript(f), [f])
+  /* ---- stage 3: software module picker state ---- */
+  const [mods, setMods] = useState<SwModulePick[]>([])
+  const [modQuery, setModQuery] = useState('')
+  const [modSelId, setModSelId] = useState<string>('')
+  const [modVerById, setModVerById] = useState<Record<string, string>>({})
+  const [handoffMerge, setHandoffMerge] = useState<Handoff | null>(null)
+
+  const gen = useMemo(() => generateScript(f, mods), [f, mods])
   const script = mode === 'gen' ? gen : (draft ?? gen)
   const custom = mode === 'custom'
   const warns = useMemo(() => (custom ? warnAgainstForm(script, f) : []), [custom, script, f])
@@ -508,6 +563,12 @@ export function SubmitJobPage(): ReactNode {
   const reads = useMemo(() => (custom ? readCustomFields(script, f) : null), [custom, script, f])
   const fEff = custom && reads !== null ? reads : f
 
+  const moduleConflicts = useMemo(() => swConflictsFor(mods), [mods])
+  const pristine = useMemo(() => isPristineField(f, activeTpl), [f, activeTpl])
+  const anyDirty = !pristine.name || !pristine.partition || !pristine.gpus
+  const anyDirtyRef = useRef(anyDirty)
+  anyDirtyRef.current = anyDirty
+
   const totalCpus = fEff.nodes * (fEff.adv.ntasks.trim() !== '' ? Math.max(1, parseInt(fEff.adv.ntasks, 10) || 1) : 1) * fEff.cpusPerTask
   const arrayN = fEff.adv.arraySpec.trim() === '' ? null : countArray(fEff.adv.arraySpec)
   const pa = paFor(fEff.partition)
@@ -516,6 +577,176 @@ export function SubmitJobPage(): ReactNode {
   const setField = (u: (prev: JobForm) => JobForm): void => {
     setActiveTpl('')
     setF(u)
+  }
+
+  /* ---- stage 3: handoff consumer — runs once per page mount, plus live 'a5-handoff' events ---- */
+  // NOTE: reads initial f state once at mount; dirty-detection is intentionally mount-time only.
+  const f0Ref = useRef(f)
+
+  useEffect(() => {
+    const applyHandoff = (hand: Handoff, handoffLive: boolean): void => {
+      if (!SOFTWARE.some((s) => s.id === hand.appId) || typeof hand.module !== 'string') return
+      const app = SOFTWARE.find((s) => s.id === hand.appId)!
+      const pick: SwModulePick = { appId: hand.appId, module: hand.module, manual: true }
+      setMods((prev) => (prev.some((m) => m.appId === pick.appId) ? prev : [...prev, pick]))
+      setModVerById((prev) => {
+        const next = { ...prev }
+        const v = app.versions.find((x) => x.module === hand.module)
+        if (v != null) next[hand.appId] = v.version
+        return next
+      })
+      const sug = swJobSuggestion(hand.appId)
+      // Live-event handoffs arrive while the user is typing: use the current
+      // dirty state. Mount-time handoffs check the mount-time form snapshot.
+      const cur = pristineDefaults
+      const form0 = f0Ref.current
+      const dirtyNow = handoffLive
+        ? anyDirtyRef.current
+        : (form0.name !== cur.name || cur.partition !== form0.partition || cur.gpus !== form0.gpus)
+      if (!dirtyNow) {
+        // Form is pristine — nothing typed by the user, so the template's
+        // default name/partition are safe to replace with the suggestion.
+        setF((prev) => ({
+          ...prev,
+          name: `${app.id}-job`,
+          partition: sug?.partition ?? prev.partition,
+          gpus: sug != null && gpuRelevant(app.id) ? sug.gpus : prev.gpus,
+        }))
+        setActiveTpl('')
+        emitToast('success', `${app.name} module loaded into the job — suggested partition ${sug?.partition ?? 'unchanged'}.`)
+      } else {
+        setHandoffMerge({ ...pick, sug: sug ?? undefined })
+      }
+    }
+    const onEvent = (ev: Event): void => {
+      const detail = (ev as CustomEvent<Handoff>).detail
+      if (detail == null) return
+      try { sessionStorage.removeItem(SW_HANDOFF_KEY) } catch { /* storage unavailable */ }
+      applyHandoff(detail, true)
+    }
+    window.addEventListener('a5-handoff', onEvent)
+    let raw: string | null = null
+    try { raw = sessionStorage.getItem(SW_HANDOFF_KEY) } catch { /* storage unavailable */ }
+    if (raw != null) {
+      try { sessionStorage.removeItem(SW_HANDOFF_KEY) } catch { /* storage unavailable */ }
+      try { applyHandoff(JSON.parse(raw) as Handoff, false) } catch { /* malformed handoff */ }
+    }
+    return () => { window.removeEventListener('a5-handoff', onEvent) }
+  }, [])
+
+  /* ---- stage 3: module picker actions ---- */
+  const modQueryL = modQuery.trim().toLowerCase()
+  const modResults = useMemo(() => {
+    if (modQueryL === '') return []
+    return SOFTWARE
+      .filter((s) => !mods.some((m) => m.appId === s.id))
+      .filter((s) =>
+        s.name.toLowerCase().includes(modQueryL) ||
+        s.id.toLowerCase().includes(modQueryL) ||
+        s.category.toLowerCase().includes(modQueryL))
+      .slice(0, 6)
+  }, [modQueryL, mods])
+  const modSel = modSelId !== '' ? SOFTWARE.find((s) => s.id === modSelId) ?? null : null
+  const modSelVer = modSel != null ? (modVerById[modSel.id] ?? modSel.defaultVersion) : ''
+
+  const stageModule = (): void => {
+    if (modSel == null) return
+    const mod = swModuleLine(modSel.id, modSelVer)
+    if (mod == null) return
+    setMods((prev) => (prev.some((m) => m.appId === modSel.id) ? prev : [...prev, { appId: modSel.id, module: mod, manual: false }]))
+    setModSelId('')
+    setModQuery('')
+    setChecked(false)
+  }
+
+  const removeModule = (appId: string): void => {
+    setMods((prev) => prev.filter((m) => m.appId !== appId))
+    setChecked(false)
+  }
+
+  const changeModuleVersion = (appId: string, ver: string): void => {
+    setModVerById((prev) => ({ ...prev, [appId]: ver }))
+    removeModule(appId)
+    const app = SOFTWARE.find((s) => s.id === appId)
+    if (app == null) return
+    const mod = swModuleLine(appId, ver)
+    if (mod == null) return
+    setMods((prev) => (prev.some((m) => m.appId === appId) ? prev : [...prev, { appId, module: mod, manual: true }]))
+    setChecked(false)
+    emitToast('info', `${app.name} restaged as ${ver}.`)
+  }
+
+  const clearModules = (): void => {
+    setMods([])
+    setModQuery('')
+    setModSelId('')
+    setChecked(false)
+  }
+
+  /* Dependency metadata is informational only — Lmod resolves trees
+   * automatically, so job scripts never auto-expand the full graph. */
+  const modDeps = useMemo(() => {
+    if (mods.length === 0) return null
+    const primary = mods[0]!
+    const app = SOFTWARE.find((s) => s.id === primary.appId)
+    const rec = softwareRecord(primary.appId)
+    if (app == null || rec == null) return null
+    const meta = SW_DEPS_AUTO_RESOLVE[app.moduleSystem]
+    const runtime = rec.deps.filter((d) => d.relation === 'runtime' && d.mandatory)
+    const nameOf = (id: string): string => SOFTWARE.find((s) => s.id === id)?.name ?? id
+    return (
+      <div className="a5-sjm-deps">
+        <div className="a5-sjm-depsh">
+          <Lucide.GitBranch size={12} />
+          <span>Required dependencies of <strong>{app.name}</strong></span>
+          <span className="a5-sjm-depsmode">{app.moduleSystem}</span>
+        </div>
+        {runtime.length > 0 ? (
+          <div className="a5-sjm-depsrow">
+            {runtime.map((d) => (
+              <span key={`${d.appId}-${d.constraint}`} className="a5-sjm-dep mono">{nameOf(d.appId)} {d.constraint}</span>
+            ))}
+          </div>
+        ) : <div className="a5-sjm-depsrow a5-sjm-depsnone">No mandatory runtime dependencies tracked.</div>}
+        <div className="a5-sjm-depsnote">{meta.note}</div>
+      </div>
+    )
+  }, [mods])
+
+  const loadSuggested = (): void => {
+    if (mods.length === 0) return
+    const primary = mods.find((m) => swJobSuggestion(m.appId) != null) ?? mods[0]!
+    const app = SOFTWARE.find((s) => s.id === primary.appId)!
+    const sug = swJobSuggestion(app.id)
+    if (sug == null) return
+    setF((prev) => ({
+      ...prev,
+      name: anyDirty && prev.name !== '' && !isPristineName(prev.name, activeTpl) ? prev.name : `${app.id}-job`,
+      partition: sug.partition,
+      gpus: gpuRelevant(app.id) ? sug.gpus : prev.gpus,
+    }))
+    setActiveTpl('')
+    emitToast('info', `Suggested values for ${app.name} applied to empty fields.`)
+  }
+
+  const resolveHandoff = (replace: boolean): void => {
+    if (handoffMerge == null) return
+    const h = handoffMerge
+    setHandoffMerge(null)
+    if (replace) {
+      const sug = h.sug
+      const app = SOFTWARE.find((s) => s.id === h.appId)!
+      setF((prev) => ({
+        ...prev,
+        name: `${app.id}-job`,
+        partition: sug?.partition ?? prev.partition,
+        gpus: sug != null && gpuRelevant(h.appId) ? sug.gpus : prev.gpus,
+      }))
+      setActiveTpl('')
+      emitToast('success', `Job fields replaced with the configuration for ${app.name}.`)
+    } else {
+      loadSuggested()
+    }
   }
 
   const applyTemplate = (t: Template): void => {
@@ -573,6 +804,7 @@ export function SubmitJobPage(): ReactNode {
       priority: 4291,
       resources: `${f.nodes} node${f.nodes === 1 ? '' : 's'} · ${f.cpusPerTask} cpus${f.gpus > 0 ? ` · ${f.gpus} gpu` : ''}${f.memGB > 0 ? ` · ${f.memGB}G` : ''}`,
       submitStr: `${new Date().toISOString().slice(0, 10)} ${new Date().toTimeString().slice(0, 5)}`,
+      module: mods[0]?.module,
     }
     JOBS.push(job)
     setSubmitted({ id, name: job.name })
@@ -587,6 +819,7 @@ export function SubmitJobPage(): ReactNode {
     setSubmitted(null)
     setMode('gen')
     setDraft(null)
+    clearModules()
     emitToast('info', 'Form reset to defaults.')
   }
 
@@ -772,6 +1005,19 @@ export function SubmitJobPage(): ReactNode {
               {arrayN !== null ? <InfoRow label="Array"><span className="mono">{fEff.adv.arraySpec}</span><span className="a5-info-sub"> · ≈ {arrayN} task instances</span></InfoRow> : null}
               {fEff.adv.ntasks.trim() !== '' ? <InfoRow label="Total tasks (--ntasks)"><span className="mono">{fEff.adv.ntasks}</span>{fEff.adv.ntasksPerNode.trim() !== '' ? <span className="a5-info-sub"> · {fEff.adv.ntasksPerNode} per node</span> : null}</InfoRow> : null}
               <InfoRow label="Command"><span className="mono">sbatch submit.sh</span></InfoRow>
+              {mods.length > 0 ? (
+                <InfoRow label="Module lines">
+                  <span className="a5-sjm-modlines mono">
+                    {mods.map((m) => <span key={m.appId} className="a5-sjm-modline">module load {m.module}</span>)}
+                    {mods.some((m) => {
+                      const sys = SOFTWARE.find((s) => s.id === m.appId)?.moduleSystem
+                      return SW_DEPS_AUTO_RESOLVE[sys ?? 'Lmod'].loads
+                    })
+                      ? <span className="a5-sjm-modline a5-sjm-modline--deps"># deps loaded explicitly (Environment Modules)</span>
+                      : null}
+                  </span>
+                </InfoRow>
+              ) : null}
               <div className="a5-preview-acts">
                 <button className="aws5-btn aws5-btn--sm" onClick={() => copy('sbatch submit.sh', 'Submission command')}><Lucide.Clipboard size={13} />Copy command</button>
                 <button className="aws5-btn aws5-btn--sm" onClick={() => copy(script, 'Batch script')}><Lucide.FileCode2 size={13} />Copy script</button>
@@ -779,8 +1025,99 @@ export function SubmitJobPage(): ReactNode {
             </CardB>
           </Card>
 
+          {/* stage 3: software module picker ------------------------------ */}
           <Card>
-            <CardH><span>Partition Availability</span></CardH>
+            <CardH>
+              <span>Software Modules</span>
+              <span className="a5-sjm-count">{mods.length} selected</span>
+            </CardH>
+            <CardB>
+              <div className="a5-sjm-searchwrap">
+                <Lucide.Search size={13} className="a5-sjm-searchicon" />
+                <input
+                  className="aws5-input a5-sjm-search"
+                  placeholder="Search the software catalogue — name, id or category…"
+                  value={modQuery}
+                  onChange={(e) => setModQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (modResults.length > 0) { setModSelId(modResults[0]!.id); setModQuery('') } } }}
+                />
+              </div>
+              {modResults.length > 0 ? (
+                <div className="a5-sjm-results">
+                  {modResults.map((s) => (
+                    <button key={s.id} type="button" className={`a5-sjm-result${s.id === modSelId ? ' active' : ''}`} onClick={() => { setModSelId(s.id); setModQuery('') }}>
+                      <span className="a5-sjm-result-name">{s.name}</span>
+                      <span className="a5-sjm-result-meta">{s.category} · {s.moduleSystem}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {modSel != null ? (
+                <div className="a5-sjm-stage">
+                  <span className="a5-sjm-stagename">{modSel.name}</span>
+                  <select
+                    className="aws5-select a5-sjm-versel"
+                    value={modSelVer}
+                    onChange={(e) => setModVerById((prev) => ({ ...prev, [modSel.id]: e.target.value }))}
+                  >
+                    {modSel.versions.map((v) => <option key={v.version} value={v.version}>{v.version}{v.version === modSel.defaultVersion ? ' (default)' : ''}</option>)}
+                  </select>
+                  <code className="a5-sjm-stagemod mono">{swModuleLine(modSel.id, modSelVer)}</code>
+                  <button className="aws5-btn aws5-btn--sm aws5-btn--primary" onClick={stageModule}><Lucide.Plus size={13} />Add to job</button>
+                </div>
+              ) : null}
+              {mods.map((m) => {
+                const app = SOFTWARE.find((s) => s.id === m.appId)
+                if (app == null || modVerById[m.appId] === undefined) return null
+                return (
+                  <div key={`${m.appId}-ver`} className="a5-sjm-verrow">
+                    <span className="a5-sjm-verlabel">Version for <strong>{app.name}</strong></span>
+                    <select
+                      className="aws5-select a5-sjm-versel"
+                      value={modVerById[m.appId]}
+                      onChange={(e) => changeModuleVersion(m.appId, e.target.value)}
+                    >
+                      {app.versions.map((v) => <option key={v.version} value={v.version}>{v.version}</option>)}
+                    </select>
+                    <code className="a5-sjm-stagemod mono">{m.module}</code>
+                  </div>
+                )
+              })}
+              {mods.length > 0 ? (
+                <div className="a5-sjm-chips">
+                  {mods.map((m) => {
+                    const app = SOFTWARE.find((s) => s.id === m.appId)
+                    return (
+                      <span key={m.appId} className="a5-sjm-chip" title={`module load ${m.module}`}>
+                        <code className="mono">{m.module}</code>
+                        <button className="a5-sjm-chip-x" aria-label={`Remove ${app?.name ?? m.appId}`} onClick={() => removeModule(m.appId)}><Lucide.X size={12} /></button>
+                      </span>
+                    )
+                  })}
+                  <button className="a5-sjm-chip-clear" onClick={clearModules}>Clear all</button>
+                </div>
+              ) : (
+                <div className="a5-sjm-empty"><Lucide.PackageOpen size={14} />No modules selected — search the catalogue above and add what your job needs.</div>
+              )}
+              {modDeps}
+              {moduleConflicts.length > 0 ? (
+                <div className="a5-sjm-conflicts">
+                  {moduleConflicts.map((c, i) => {
+                    const an = SOFTWARE.find((s) => s.id === c.a)?.name ?? c.a
+                    const bn = SOFTWARE.find((s) => s.id === c.b)?.name ?? c.b
+                    return (
+                      <div key={i} className="a5-sjm-conflict"><Lucide.AlertTriangle size={13} /><span><strong>{an} + {bn}:</strong> {c.reason}</span></div>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </CardB>
+          </Card>
+
+          <Card>
+            <CardH>
+              <span>Partition Availability</span>
+            </CardH>
             <CardB>
               <div className="a5-avail-list">
                 {PA.map((x) => (
@@ -866,6 +1203,31 @@ export function SubmitJobPage(): ReactNode {
               <button className="aws5-btn aws5-btn--primary" onClick={doSwitch}>
                 {confirmSwitch === 'toGen' ? 'Discard & regenerate' : 'Switch to custom'}
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {handoffMerge !== null ? (
+        <div className="a5-modal-veil" onClick={() => setHandoffMerge(null)}>
+          <div className="a5-modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="a5-modal-head">
+              <h3 className="a5-modal-title">Add module to an existing configuration?</h3>
+              <button className="a5-iconbtn" onClick={() => setHandoffMerge(null)}><Lucide.X size={14} /></button>
+            </div>
+            <div className="a5-modal-body">
+              <p>
+                <span className="mono">{handoffMerge.module}</span> has been added to this job. Your current
+                fields (name <span className="mono">{f.name === '' ? '(empty)' : f.name}</span>, partition <span className="mono">{f.partition}</span>, GPUs <span className="mono">{f.gpus}</span>)
+                differ from the suggested values, so nothing was overwritten.
+              </p>
+              <p className="a5-sjm-mergehint">
+                Merge keeps your values and only fills empty fields · Replace rewrites name, partition{handoffMerge.sug != null && gpuRelevant(handoffMerge.appId) ? ' and GPU count' : ''} to the suggestion for this module.
+              </p>
+            </div>
+            <div className="a5-modal-foot">
+              <button className="aws5-btn" onClick={() => setHandoffMerge(null)}>Leave as is</button>
+              <button className="aws5-btn" onClick={() => resolveHandoff(false)}>Merge</button>
+              <button className="aws5-btn aws5-btn--primary" onClick={() => resolveHandoff(true)}>Replace fields</button>
             </div>
           </div>
         </div>

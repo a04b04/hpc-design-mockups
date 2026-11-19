@@ -3,14 +3,21 @@
  * compact card views, search plus category/availability filters and derived
  * overview stats. Selection is simulated only — detail tabs arrive stage 2. */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as Lucide from 'lucide-react'
-import { Breadcrumbs, Card, CardB, SortableTh, emitToast } from '../components/ui'
+import { Breadcrumbs, Card, CardB, CardH, SortableTh, emitToast, navTo } from '../components/ui'
 import type { Role } from '../data'
 import {
-  SOFTWARE_CATEGORIES, filterSoftware, softwareCounts, sortSoftware, swDateString,
+  SOFTWARE, SOFTWARE_CATEGORIES, filterSoftware, softwareCounts, sortSoftware, swDateString,
+  softwareRecord, licenceText,
+  swModuleLine,
 } from './software'
-import type { Availability, SoftwareApp, SoftwareCategory } from './software'
+import type { SoftwareApp, SoftwareRecord, SoftwareCategory, Availability, SoftwareDep, SoftwareUsageNote } from './software'
+
+function copyText(text: string): void {
+  void navigator.clipboard?.writeText(text).catch(() => undefined)
+  emitToast('success', 'Copied to clipboard')
+}
 
 const SW_VIEW_KEY = 'enucc5.softwareView'
 
@@ -90,8 +97,8 @@ function SwStats({ counts }: { counts: { apps: number; modules: number; categori
 
 function SwFilters({ q, setQ, cat, setCat, avail, setAvail, onClear, count, total }: {
   q: string; setQ: (v: string) => void
-  cat: string; setCat: (v: SoftwareCategory | 'ALL') => void
-  avail: string; setAvail: (v: Availability | 'ALL') => void
+  cat: string; setCat: (v: string) => void
+  avail: string; setAvail: (v: string) => void
   onClear: () => void
   count: number; total: number
 }) {
@@ -100,14 +107,14 @@ function SwFilters({ q, setQ, cat, setCat, avail, setAvail, onClear, count, tota
     <div className="a5-filterbar">
       <div className="aws5-searchbox-main"><Lucide.Search size={13} /><input placeholder="Search software, modules…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
       <div className="aws5-selectwrap">
-        <select value={cat} onChange={(e) => setCat(e.target.value as SoftwareCategory | 'ALL')} aria-label="Category filter">
+        <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label="Category filter">
           <option value="ALL">Category: ALL</option>
           {SOFTWARE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
         <Lucide.ChevronDown size={12} />
       </div>
       <div className="aws5-selectwrap">
-        <select value={avail} onChange={(e) => setAvail(e.target.value as Availability | 'ALL')} aria-label="Availability filter">
+        <select value={avail} onChange={(e) => setAvail(e.target.value)} aria-label="Availability filter">
           <option value="ALL">Availability: ALL</option>
           <option value="available">Available</option>
           <option value="restricted">Restricted</option>
@@ -214,22 +221,29 @@ function SwCards({ rows, onDetails }: { rows: SoftwareApp[]; onDetails: (app: So
 
 // ------------------------------------------------------------------ page --
 
-export function SoftwarePage(_props: { role: Role }) {
+export function SoftwarePage(props: { role: Role }) {
   const [view, setView] = useState<'table' | 'cards'>(() => (safeGet(SW_VIEW_KEY) === 'cards' ? 'cards' : 'table'))
   useEffect(() => { safeSet(SW_VIEW_KEY, view) }, [view])
 
   const [q, setQ] = useState('')
-  const [cat, setCat] = useState<SoftwareCategory | 'ALL'>('ALL')
-  const [avail, setAvail] = useState<Availability | 'ALL'>('ALL')
+  const [cat, setCat] = useState('ALL')
+  const [avail, setAvail] = useState('ALL')
 
   const [sort, setSort] = useState({ col: 'name', asc: true })
   const onSort = (c: string) => setSort((s) => ({ col: c, asc: s.col === c ? !s.asc : true }))
 
   const counts = useMemo(() => softwareCounts(), [])
-  const filtered = useMemo(() => filterSoftware({ q, category: cat, availability: avail }), [q, cat, avail])
+  const filtered = useMemo(
+    () => filterSoftware({
+      q,
+      category: cat === 'ALL' ? 'ALL' : (cat as SoftwareCategory),
+      availability: avail === 'ALL' ? 'ALL' : (avail as Availability),
+    }),
+    [q, cat, avail],
+  )
   const sorted = useMemo(() => sortSoftware(filtered, sort.col, sort.asc), [filtered, sort])
 
-  return (
+  const list = (
     <>
       <SwHeader
         view={view}
@@ -246,9 +260,260 @@ export function SoftwarePage(_props: { role: Role }) {
           count={sorted.length} total={counts.apps}
         />
         {view === 'table'
-          ? <SwTable rows={sorted} total={counts.apps} sort={sort} onSort={onSort} onDetails={() => emitToast('info', 'Software details arrive in stage 2 — simulated selection.')} />
-          : <SwCards rows={sorted} onDetails={() => emitToast('info', 'Software details arrive in stage 2 — simulated selection.')} />}
+          ? <SwTable rows={sorted} total={counts.apps} sort={sort} onSort={onSort} onDetails={navToDetail} />
+          : <SwCards rows={sorted} onDetails={navToDetail} />}
       </div>
     </>
   )
+  return <SoftwareRoutes role={props.role} list={list} />
+}
+
+function navToDetail(app: SoftwareApp): void {
+  navTo({ page: 'software', swId: app.id })
+}
+
+const SW_HANDOFF_KEY = 'enucc5.swHandoff'
+
+/** Stage 3: hand the app + exact module version to the Submit Job page. */
+export function useInJob(appId: string, version?: string): void {
+  const app = SOFTWARE.find((s) => s.id === appId)
+  const mod = swModuleLine(appId, version ?? app?.defaultVersion)
+  if (!app || mod == null) return
+  const handoff = { appId: app.id, module: mod }
+  try { sessionStorage.setItem(SW_HANDOFF_KEY, JSON.stringify(handoff)) } catch { /* storage unavailable */ }
+  // If the Submit Job page is already mounted live, its mount-effect will not re-run;
+  // notify it via a window event so the handoff (and merge modal) still lands.
+  try {
+    window.dispatchEvent(new CustomEvent('a5-handoff', { detail: handoff }))
+  } catch { /* legacy browsers */ }
+  navTo({ page: 'submit-job' })
+}
+
+/* ================================================================ detail = */
+
+const SW_TABS = ['Overview', 'Versions', 'Dependencies', 'Usage'] as const
+
+function SwDetailStats({ rec, app }: { rec: SoftwareRecord; app: SoftwareApp }) {
+  const stats: Array<{ label: string; value: string }> = [
+    { label: 'Loaded in jobs', value: `${rec.loadedJobs.total}` },
+    { label: 'Job share', value: `${rec.loadedJobs.sharePct}%` },
+    { label: 'Versions', value: `${app.versions.length}` },
+    {
+      label: 'Licence seats free', value:
+        rec.licenceFree != null ? `${rec.licenceFree}` : '—',
+    },
+  ]
+  return (
+    <div className="a5-four a5-swd-stats">
+      {stats.map((s) => (
+        <div key={s.label} className="aws5-card a5-fm-stat">
+          <div className="a5-fm-stat-h"><span className="aws5-kpi-label">{s.label}</span></div>
+          <div className="aws5-kpi-val" style={{ marginTop: 6 }}>{s.value}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SwDepRow({ dep }: { dep: SoftwareDep }) {
+  const target = SOFTWARE.find((s) => s.id === dep.appId)
+  return (
+    <div className="a5-swd-dep">
+      <button className="a5-swd-dep-name" onClick={() => target && navToDetail(target)}>
+        {target?.name ?? dep.appId}
+      </button>
+      <span className="a5-swd-dep-ver mono">{dep.constraint}</span>
+      <span className={`aws5-chip a5-swd-relation a5-swd-rel--${dep.relation}`}>{dep.relation}</span>
+      <span className={`aws5-chip ${dep.mandatory ? 'aws5-chip--blue' : 'aws5-chip--grey'}`}>
+        {dep.mandatory ? 'Mandatory' : 'Optional'}
+      </span>
+      <span className="a5-swd-dep-desc sub">{target?.description ?? ''}</span>
+    </div>
+  )
+}
+
+function SwDetailTab({ app, rec, tab }: { app: SoftwareApp; rec: SoftwareRecord; tab: string }) {
+  if (tab === 'Overview') {
+    return (
+      <>
+        <div className="a5-pair">
+          <Card>
+            <CardH right={<span className="a5-note mono">{app.moduleSystem}</span>}>Module information</CardH>
+            <CardB>
+              <div className="a5-swd-kvlist">
+                {([
+                  ['Homepage', <span className="mono">{rec.homepage}</span>],
+                  ['Maintainer', <span>{rec.maintainer}</span>],
+                  ['Default module', <span className="mono">{app.versions.find((v) => v.version === app.defaultVersion)?.module ?? app.defaultVersion}</span>],
+                  ['Install prefix', <span className="mono">{rec.installPrefix}</span>],
+                  ['Licence', <span className="mono">{licenceText(rec)}</span>],
+                  ['Licence server', <span className="mono">{rec.licenceServer ?? '—'}</span>],
+                ] as Array<[string, ReactNode]>).map(([k, v]) => (
+                  <div key={k} className="a5-kvrow"><div className="a5-kv-k">{k}</div><div className="a5-kv-v">{v}</div></div>
+                ))}
+              </div>
+            </CardB>
+          </Card>
+          <Card>
+            <CardH right={<AvailChip value={app.availability} />}>Module commands</CardH>
+            <CardB>
+              <div className="a5-swd-cmd">
+                <code className="mono">module load {app.versions.find((v) => v.version === app.defaultVersion)?.module ?? `${app.name.toLowerCase()}/${app.defaultVersion}`}</code>
+                <button
+                  className="a5-swd-copy"
+                  aria-label="Copy module load command"
+                  onClick={() => copyText(`module load ${app.versions.find((v) => v.version === app.defaultVersion)?.module ?? `${app.name.toLowerCase()}/${app.defaultVersion}`}`)}
+                >
+                  <Lucide.Copy size={13} />
+                </button>
+              </div>
+              <button
+                className="a5-swd-cmduse"
+                onClick={() => useInJob(app.id)}
+              >
+                <Lucide.Wand2 size={13} />Use in Job
+                <span className="a5-swd-cmduse-arrow"><Lucide.ArrowRight size={13} /></span>
+              </button>
+              <p className="a5-note a5-swd-cmdnote">Loaded with the default version. Pin a specific release on the Versions tab and copy from there instead.</p>
+            </CardB>
+          </Card>
+        </div>
+        {rec.usage.length > 0 && (
+          <Card>
+            <CardH right={<span className="a5-note">{rec.usage.length} guidelines</span>}>Usage notes</CardH>
+            <CardB>
+              <div className="a5-swd-usagelist">
+                {rec.usage.map((u) => <SwUsageRow key={u.title} note={u} />)}
+              </div>
+            </CardB>
+          </Card>
+        )}
+      </>
+    )
+  }
+
+  if (tab === 'Versions') {
+    const defaultVersion = app.defaultVersion
+    return (
+      <Card>
+        <CardH right={<span className="a5-note">{app.versions.length} module records</span>}>
+          Version history
+        </CardH>
+        <CardB>
+          <div className="a5-swd-verlist">
+            {app.versions.map((v, i) => (
+              <div key={`${v.module || v.version}-${i}`} className="a5-swd-ver">
+                <div className="a5-swd-ver-main">
+                  <span className="a5-swd-vername mono">{v.version}</span>
+                  {v.version === defaultVersion && <span className="aws5-chip aws5-chip--blue">Default</span>}
+                  {v.module.includes('legacy') && <span className="a5-swd-verlegacy">legacy build</span>}
+                </div>
+                <code className="a5-swd-vermodule mono">{v.module}</code>
+              </div>
+            ))}
+            {app.versions.length === 0 && <span className="a5-empty">No module records for this application.</span>}
+          </div>
+        </CardB>
+      </Card>
+    )
+  }
+
+  if (tab === 'Dependencies') {
+    const counts = {
+      build: rec.deps.filter((d) => d.relation === 'build').length,
+      runtime: rec.deps.filter((d) => d.relation === 'runtime').length,
+      recommended: rec.deps.filter((d) => d.relation === 'recommended').length,
+    }
+    return (
+      <Card>
+        <CardH right={<span className="a5-note">{rec.deps.length} dependencies tracked</span>}>
+          Build &amp; runtime dependencies
+        </CardH>
+        <CardB className="a5-swd-depsbody">
+          <div className="a5-swd-depsummary">
+            <span className="aws5-chip aws5-chip--grey">{counts.build} build</span>
+            <span className="aws5-chip aws5-chip--grey">{counts.runtime} runtime</span>
+            {counts.recommended > 0 && <span className="aws5-chip aws5-chip--grey">{counts.recommended} recommended</span>}
+          </div>
+          <div className="a5-swd-deplist">
+            {rec.deps.map((d) => <SwDepRow key={`${d.appId}-${d.constraint}`} dep={d} />)}
+            {rec.deps.length === 0 && (
+              <div className="a5-empty">No dependencies are tracked for this application — it is self-contained in its module.</div>
+            )}
+          </div>
+        </CardB>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardH right={<span className="a5-note">{rec.usage.length} guidelines</span>}>Usage notes</CardH>
+      <CardB>
+        <div className="a5-swd-usagelist">
+          {rec.usage.map((u) => <SwUsageRow key={u.title} note={u} />)}
+          {rec.usage.length === 0 && <div className="a5-empty">No usage guidelines published for this application yet.</div>}
+        </div>
+      </CardB>
+    </Card>
+  )
+}
+
+function SwUsageRow({ note }: { note: SoftwareUsageNote }) {
+  return (
+    <div className="a5-swd-usenote">
+      <div className="a5-swd-usenote-h"><Lucide.Info size={13} />{note.title}</div>
+      <div className="a5-swd-usenote-b">{note.detail}</div>
+    </div>
+  )
+}
+
+function SwDetailPage({ app, role: _role }: { app: SoftwareApp; role: Role }) {
+  const rec = softwareRecord(app.id)
+  const [tab, setTab] = useState<(typeof SW_TABS)[number]>('Overview')
+  if (!rec) return null
+  return (
+    <div className="a5-page">
+      <Breadcrumbs items={[
+        { label: 'Workloads' },
+        { label: 'Software & Modules', onClick: () => navTo({ page: 'software' }) },
+        { label: app.name },
+      ]} />
+      <div className="a5-pagehead">
+        <div className="a5-pagehead-row">
+          <div>
+            <h1 className="aws5-h1"><Lucide.Package size={19} /> {app.name}</h1>
+            <div className="a5-pagehead-sub">{rec.tagline}</div>
+          </div>
+          <div className="a5-pagehead-actions">
+            <button
+              className="aws5-btn aws5-btn--primary"
+              title="Open this module in the Submit Job workflow"
+              onClick={() => useInJob(app.id)}
+            >
+              <Lucide.Wand2 size={13} />Use in Job{app.versions.length > 1 ? ` — ${app.defaultVersion}` : ''}
+            </button>
+            <AvailChip value={app.availability} />
+          </div>
+        </div>
+      </div>
+      <SwDetailStats rec={rec} app={app} />
+      <div className="a5-tabs-row"><div className="aws5-tabs">
+        {SW_TABS.map((t) => (
+          <button key={t} className={`aws5-tab${t === tab ? ' active' : ''}`} onClick={() => setTab(t)}>{t}</button>
+        ))}
+      </div></div>
+      {tab === 'Overview' && <SwDetailTab app={app} rec={rec} tab="Overview" />}
+      {tab === 'Versions' && <SwDetailTab app={app} rec={rec} tab="Versions" />}
+      {tab === 'Dependencies' && <SwDetailTab app={app} rec={rec} tab="Dependencies" />}
+      {tab === 'Usage' && <SwDetailTab app={app} rec={rec} tab="Usage" />}
+    </div>
+  )
+}
+
+/** Stage 2: the software route resolves to either the list or a detail page. */
+export function SoftwareRoutes({ role, list }: { role: Role; list: ReactNode }) {
+  const app = SOFTWARE.find((s) => window.location.hash.endsWith(`/software/${s.id}`))
+  if (!app) return <>{list}</>
+  return <SwDetailPage app={app} role={role} />
 }
