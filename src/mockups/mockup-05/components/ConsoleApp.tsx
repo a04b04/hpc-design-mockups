@@ -20,6 +20,7 @@ import { SlurmAccountsPage, UsersPage } from '../pages/cluster-pages'
 import { FeatureManagementPage } from '../pages/feature-management'
 import { RolesPermissionsPage } from '../pages/roles-permissions'
 import { FilesystemsPage, FilesystemDetailPage, QuotasPage } from '../pages/storage-pages'
+import { SoftwarePage } from '../pages/software-catalogue'
 import { SubmitJobPage } from '../pages/submit-job'
 import {
   AlertsPage, ClusterHealthPage, ConfigurationPage, NodeManagementPage,
@@ -138,6 +139,7 @@ export default function ConsoleApp() {
       case 'filesystems': return <FilesystemsPage />
       case 'fs': return 'fs' in route ? <FilesystemDetailPage fsKey={route.fs} role={role} /> : null
       case 'file-browser': return <FileBrowserPage role={role} />
+      case 'software': return <SoftwarePage role={role} />
       case 'quotas': return <QuotasPage role={role} />
       case 'cluster-health': return <ClusterHealthPage />
       case 'resource-utilisation': return <ResourceUtilisationPage />

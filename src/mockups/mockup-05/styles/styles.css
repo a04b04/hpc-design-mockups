@@ -2179,3 +2179,26 @@
   .aws5 .a5-rp-featline { grid-template-columns: 130px 1fr; }
   .aws5 .a5-rp-featmeta { grid-column: 1 / -1; text-align: left; }
 }
+
+/* Software & Modules page (stage 1 catalogue) */
+.aws5 .a5-sw-tbl td { white-space: normal; vertical-align: top; }
+.aws5 .a5-sw-tbl td > .a5-sw-name, .aws5 .a5-sw-tbl td > .a5-sw-cat,
+.aws5 .a5-sw-tbl td > .aws5-chip, .aws5 .a5-sw-tbl td > .a5-sw-vercell { white-space: nowrap; }
+.aws5 .a5-sw-tbl .a5-empty, .aws5 .a5-sw-tbl td.a5-c.mono { white-space: nowrap; vertical-align: middle; }
+.aws5 .a5-sw-name { font-weight: 600; font-size: 12.5px; color: var(--a5-ink); display: flex; flex-direction: column; gap: 3px; }
+.aws5 .a5-sw-desc { font-weight: 400; font-size: 11.5px; color: var(--a5-sub); }
+.aws5 .a5-sw-cat { display: inline-block; font-size: 10.5px; font-weight: 600; line-height: 15px; color: #4b5563; background: #eef1f5; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.aws5 .a5-sw-vercell { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; }
+.aws5 .a5-sw-vercount { font-size: 10.5px; font-weight: 600; color: var(--a5-blue); background: var(--a5-blue-bg); border-radius: 999px; padding: 0 6px; line-height: 15px; }
+.aws5 .a5-sw-date { font-variant-numeric: tabular-nums; }
+.aws5 .a5-sw-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 16px 11px; border-top: 1px solid var(--a5-line-soft); font-size: 11.5px; }
+.aws5 .a5-sw-foot code { font-family: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, monospace; font-size: 11px; }
+.aws5 .a5-sw-cardname { font-weight: 650; font-size: 13px; color: var(--a5-ink); }
+.aws5 .a5-sw-carddesc { font-size: 12px; color: var(--a5-sub); margin: -6px 0 10px; overflow-wrap: anywhere; }
+.aws5 .a5-sw-mods { font-size: 11.5px; overflow-wrap: anywhere; }
+.aws5 .a5-sw-stats .a5-fm-stat-h .aws5-kpi-label { white-space: nowrap; }
+.aws5.aws5-dark .a5-sw-cat { color: #aeb9c6; background: #232b34; }
+.aws5.aws5-dark .a5-sw-desc { color: #94a2b3; }
+@media (max-width: 760px) {
+  .aws5 .a5-sw-foot { flex-direction: column; align-items: flex-start; gap: 2px; }
+}

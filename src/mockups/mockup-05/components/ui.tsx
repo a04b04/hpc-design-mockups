@@ -349,6 +349,7 @@ export type A5Route =
   | { page: 'partitions' } | { page: 'partition'; partition: string } | { page: 'reservations' } | { page: 'resv'; resv: string }
   | { page: 'jobs'; partition?: string } | { page: 'jb'; jobId: number } | { page: 'submit-job'; partition?: string } | { page: 'job-templates' } | { page: 'job-history' }
   | { page: 'filesystems' } | { page: 'fs'; fs: string } | { page: 'file-browser' } | { page: 'quotas' }
+  | { page: 'software' }
   | { page: 'cluster-health' } | { page: 'resource-utilisation' } | { page: 'alerts' }
   | { page: 'terminal' } | { page: 'remote-desktop' }
   | { page: 'users' } | { page: 'slurm-accounts' } | { page: 'qos' } | { page: 'node-mgmt' } | { page: 'configuration' }
@@ -382,7 +383,7 @@ export function parseHash(hash: string): A5Route | null {
   if (seg === 'filesystems' && arg) return { page: 'fs', fs: arg }
   if (seg === 'jobs' && arg) return { page: 'jb', jobId: Number(arg) }
   if (part && (seg === 'nodes' || seg === 'jobs')) return { page: seg, partition: part } as A5Route
-  const known = ['dashboard', 'nodes', 'partitions', 'reservations', 'jobs', 'submit-job', 'job-templates', 'job-history', 'filesystems', 'file-browser', 'quotas', 'cluster-health', 'resource-utilisation', 'alerts', 'terminal', 'remote-desktop', 'users', 'slurm-accounts', 'qos', 'node-mgmt', 'configuration', 'feature-mgmt', 'roles']
+  const known = ['dashboard', 'nodes', 'partitions', 'reservations', 'jobs', 'submit-job', 'job-templates', 'job-history', 'filesystems', 'file-browser', 'software', 'quotas', 'cluster-health', 'resource-utilisation', 'alerts', 'terminal', 'remote-desktop', 'users', 'slurm-accounts', 'qos', 'node-mgmt', 'configuration', 'feature-mgmt', 'roles']
   if (known.includes(seg)) return { page: seg } as A5Route
   return null
 }

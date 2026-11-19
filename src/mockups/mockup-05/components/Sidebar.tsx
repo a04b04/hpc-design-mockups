@@ -21,6 +21,9 @@ const GROUPS: NavGroup[] = [
     { label: 'Job Templates', page: 'job-templates', icon: 'Files' },
     { label: 'Job History', page: 'job-history', icon: 'CalendarDays' },
   ] },
+  { label: 'Software', items: [
+    { label: 'Software & Modules', page: 'software', icon: 'Package' },
+  ] },
   { label: 'Storage', items: [
     { label: 'Filesystems', page: 'filesystems', icon: 'Database' },
     { label: 'File Browser', page: 'file-browser', icon: 'FolderTree' },
