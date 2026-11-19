@@ -4,12 +4,12 @@ import {
   Breadcrumbs, Card, CardB, CardH, JobStateChip, Kv, MenuWrap, Modal, Pagination,
   SortableTh, emitToast, navTo,
 } from '../components/ui'
-import { JOBS, PARTITIONS } from '../data'
-import type { EnJob, JobState, Role } from '../data'
+import { JOBS, PARTITIONS, SESSION_USER, isOwnJob, scopedJobs } from '../data'
+import type { EnJob, JobState, Role, SessionIdentity } from '../data'
 
 /* The Submit Job page pushes simulated submissions into this same array, so
  * freshly submitted jobs appear here without a separate dataset. */
-const allJobs = (): EnJob[] => JOBS
+const allJobs = (me: SessionIdentity): EnJob[] => (me ? scopedJobs(me.role) : scopedJobs('admin'))
 
 type ColumnToggles = {
   cpus: boolean
@@ -113,14 +113,15 @@ function jobsSub(jobs: EnJob[]): string {
   return `${c('RUNNING')} running · ${c('PENDING')} pending · ${c('COMPLETED')} completed · ${c('FAILED')} failed (squeue, simulated controller)`
 }
 
-function JobsHeader({ view, setView, onExport }: { view: 'table' | 'cards'; setView: (v: 'table' | 'cards') => void; onExport: () => void }) {
+function JobsHeader({ me, view, setView, onExport }: { me: SessionIdentity; view: 'table' | 'cards'; setView: (v: 'table' | 'cards') => void; onExport: () => void }) {
+  const cluster = me.role === 'admin'
   return (
     <>
-      <Breadcrumbs items={[{ label: 'Workloads' }, { label: 'Slurm Jobs' }]} />
+      <Breadcrumbs items={[{ label: 'Workloads' }, { label: cluster ? 'Slurm Jobs' : 'My Jobs' }]} />
       <div className="a5-pagehead-row">
         <div>
-          <h1 className="aws5-h1"><Lucide.ListChecks size={19} /> Slurm Jobs</h1>
-          <div className="a5-pagehead-sub">{jobsSub(allJobs())}</div>
+          <h1 className="aws5-h1"><Lucide.ListChecks size={19} /> {cluster ? 'Slurm Jobs' : 'My Jobs'}</h1>
+          <div className="a5-pagehead-sub">{jobsSub(allJobs(me))}{cluster ? '' : (me.account ? ` · charged to ${me.account}` : '')}</div>
         </div>
         <div className="a5-pagehead-actions">
           <button className="aws5-btn aws5-btn--outline aws5-btn--sm" onClick={() => emitToast('success', 'Job queue refreshed')}>
@@ -177,17 +178,15 @@ function Kpis({ rows, active, onToggle }: { rows: EnJob[]; active: JobState | nu
 
 /* -------------------------------------------------------------- filters -- */
 
-function Filters({ q, setQ, state, setState, part, setPart, user, setUser, account, setAccount, qos, setQos, onClear, count, total }: {
+function Filters({ q, setQ, state, setState, part, setPart, account, setAccount, onClear, count, total }: {
   q: string; setQ: (v: string) => void
   state: string; setState: (v: string) => void
   part: string; setPart: (v: string) => void
-  user: string; setUser: (v: string) => void
   account: string; setAccount: (v: string) => void
-  qos: string; setQos: (v: string) => void
   onClear: () => void
   count: number; total: number
 }) {
-  const dirty = Boolean(q || state !== 'ALL' || part !== 'ALL' || user !== 'ALL' || account !== 'ALL' || qos !== 'ALL')
+  const dirty = Boolean(q || state !== 'ALL' || part !== 'ALL' || account !== 'ALL')
   return (
     <div className="a5-filterbar">
       <div className="aws5-searchbox-main"><Lucide.Search size={13} /><input placeholder="Search job ID, name, user, account…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
@@ -209,23 +208,9 @@ function Filters({ q, setQ, state, setState, part, setPart, user, setUser, accou
         <Lucide.ChevronDown size={12} />
       </div>
       <div className="aws5-selectwrap">
-        <select value={user} onChange={(e) => setUser(e.target.value)} aria-label="User filter">
-          <option value="ALL">User: ALL</option>
-          {USER_OPTS.map((u) => <option key={u} value={u}>{u}</option>)}
-        </select>
-        <Lucide.ChevronDown size={12} />
-      </div>
-      <div className="aws5-selectwrap">
         <select value={account} onChange={(e) => setAccount(e.target.value)} aria-label="Account filter">
           <option value="ALL">Account: ALL</option>
           {ACCOUNT_OPTS.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
-        <Lucide.ChevronDown size={12} />
-      </div>
-      <div className="aws5-selectwrap">
-        <select value={qos} onChange={(e) => setQos(e.target.value)} aria-label="QoS filter">
-          <option value="ALL">QoS: ALL</option>
-          {QOS_NAMES.map((x) => <option key={x} value={x}>{x}</option>)}
         </select>
         <Lucide.ChevronDown size={12} />
       </div>
@@ -239,9 +224,7 @@ function Filters({ q, setQ, state, setState, part, setPart, user, setUser, accou
 
 const jobSearchKey = (j: EnJob): string => `${j.id} ${j.name} ${j.user} ${j.account}`
 
-const USER_OPTS = Array.from(new Set(JOBS.map((j) => j.user))).sort() // subset of USERS for realism, keeps queue-wide filtering useful
 const ACCOUNT_OPTS = Array.from(new Set(JOBS.map((j) => j.account))).sort()
-const QOS_NAMES = ['high', 'normal', 'low', 'long']
 
 /* ---------------------------------------------------------------- table -- */
 
@@ -255,9 +238,11 @@ const OPT_COLS: Array<{ key: keyof ColumnToggles; label: string }> = [
 ]
 void OPT_COLS
 
-function JobsRow({ j, role, cols, onMenu }: { j: JRow; role: Role; cols: ColumnToggles; onMenu: (j: JRow) => void }) {
+function JobsRow({ j, me, cols, onMenu }: { j: JRow; me: SessionIdentity; cols: ColumnToggles; onMenu: (j: JRow) => void }) {
   const open = () => navTo({ page: 'jb', jobId: j.id })
-  const adminActions = role === 'admin'
+  const adminActions = me.role === 'admin'
+  // Standard users may cancel their own queued/running jobs; hold/release/requeue stay administrator-only.
+  const canCancel = (adminActions || isOwnJob(me.role, j)) && (j.state === 'RUNNING' || j.state === 'PENDING')
   return (
     <tr>
       <td className="mono a5-name-link" onClick={open}>{j.id}</td>
@@ -288,7 +273,7 @@ function JobsRow({ j, role, cols, onMenu }: { j: JRow; role: Role; cols: ColumnT
             { label: 'Hold', icon: 'Pause', disabled: j.state !== 'PENDING', onClick: adminActions ? () => emitToast('warn', `Job ${j.id} held — simulated`) : undefined },
             { label: 'Release', icon: 'Play', disabled: j.state !== 'PENDING', onClick: adminActions ? () => emitToast('success', `Job ${j.id} released — simulated`) : undefined },
             { label: 'Requeue', icon: 'RotateCcw', disabled: j.state !== 'COMPLETED' && j.state !== 'FAILED', onClick: adminActions ? () => emitToast('warn', `Job ${j.id} requeued — simulated`) : undefined },
-            { label: 'Cancel', icon: 'Ban', kind: 'danger', disabled: j.state !== 'RUNNING' && j.state !== 'PENDING', onClick: adminActions ? () => onMenu(j) : undefined },
+            { label: 'Cancel', icon: 'Ban', kind: 'danger', disabled: !canCancel, onClick: canCancel ? () => onMenu(j) : undefined },
           ]}
         />
       </td>
@@ -296,7 +281,7 @@ function JobsRow({ j, role, cols, onMenu }: { j: JRow; role: Role; cols: ColumnT
   )
 }
 
-function JobsTable({ role, rows, cols, setCols, onConfirmCancel }: { role: Role; rows: JRow[]; cols: ColumnToggles; setCols: (c: ColumnToggles) => void; onConfirmCancel: (j: JRow) => void }) {
+function JobsTable({ me, rows, cols, setCols, onConfirmCancel }: { me: SessionIdentity; rows: JRow[]; cols: ColumnToggles; setCols: (c: ColumnToggles) => void; onConfirmCancel: (j: JRow) => void }) {
   const [page, setPage] = useState(1)
   const perPage = 10
   const pages = Math.max(1, Math.ceil(rows.length / perPage))
@@ -368,7 +353,7 @@ function JobsTable({ role, rows, cols, setCols, onConfirmCancel }: { role: Role;
             </tr>
           </thead>
           <tbody>
-            {trows.map((j) => <JobsRow key={j.id} j={j} role={role} cols={cols} onMenu={onConfirmCancel} />)}
+            {trows.map((j) => <JobsRow key={j.id} j={j} me={me} cols={cols} onMenu={onConfirmCancel} />)}
             {trows.length === 0 && <tr><td colSpan={11 + Number(cols.cpus) + Number(cols.mem) + Number(cols.gpus) + Number(cols.submit) + Number(cols.started) + Number(cols.reason) + 1} className="a5-empty">No jobs match the current filters.</td></tr>}
           </tbody>
         </table>
@@ -413,6 +398,7 @@ function JobsCards({ rows }: { rows: JRow[] }) {
 function JobModal({ job, onClose, role, onOpenPage }: { job: JRow | null; onClose: () => void; role: Role; onOpenPage: (id: number) => void }) {
   if (!job) return null
   const cmd = `scontrol show job ${job.id}`
+  const showJobInfoBar = role === 'admin'
   return (
     <Modal
       title={`Job ${job.id} — quick view`}
@@ -451,7 +437,7 @@ function JobModal({ job, onClose, role, onOpenPage }: { job: JRow | null; onClos
       </div>
       <div className="j-modh" style={{ marginTop: 12 }}>Resources</div>
       <pre className="res-pre mono j-pre-sm">{job.resources}{job.nodeList.length ? `\n${job.nodeList.join(' ')}` : ''}</pre>
-      {role === 'admin' && job.state === 'RUNNING' && (
+      {showJobInfoBar && job.state === 'RUNNING' && (
         <p className="a5-footnote"><Lucide.Info size={13} /> Cancel is available from the row actions menu (simulated).</p>
       )}
     </Modal>
@@ -481,25 +467,62 @@ function CancelDialog({ job, onClose, onConfirm }: { job: JRow | null; onClose: 
 
 /* ---------------------------------------------------------- detail page -- */
 
+function AccessDenied({ jobId }: { jobId: number }) {
+  return (
+    <>
+      <Breadcrumbs items={[
+        { label: 'Workloads' },
+        { label: 'My Jobs', onClick: () => navTo({ page: 'jobs' }) },
+        { label: `Job ${jobId}` },
+      ]} />
+      <Card>
+        <CardB>
+          <div className="a5-denied">
+            <Lucide.ShieldAlert size={17} />
+            <div>
+              <div className="a5-denied-t">You do not have permission to view this job</div>
+              <p className="a5-denied-b">
+                <span className="mono">#{jobId}</span> does not belong to your user or any of your Slurm accounts.
+                Administrators can view the full cluster-wide queue.
+              </p>
+            </div>
+          </div>
+          <div className="a5-denied-actions">
+            <button className="aws5-btn aws5-btn--sm" onClick={() => navTo({ page: 'jobs' })}>Back to My Jobs</button>
+          </div>
+        </CardB>
+      </Card>
+    </>
+  )
+}
+
 export function JobDetailPage({ jobId, role }: { jobId: number; role: Role }) {
-  const rows = useMemo(() => allJobs().map((j) => ({ ...j, ...deriveJob(j) })), [])
+  const rows = useMemo(() => scopedJobs(role).map((j) => ({ ...j, ...deriveJob(j) })), [role])
   const j = rows.find((x) => x.id === jobId)
   const [tab, setTab] = useState('Overview')
+  // Permission gate: standard users may only open jobs that belong to them or to
+  // one of their Slurm accounts, mirroring the scoped queue on the jobs list page.
+  if (role === 'user' && j) {
+    if (j.user !== SESSION_USER.user.uid && !SESSION_USER.user.allowedAccounts.includes(j.account)) {
+      return <AccessDenied jobId={jobId} />
+    }
+  }
   if (!j) {
     return (
       <>
-        <Breadcrumbs items={[{ label: 'Workloads' }, { label: 'Slurm Jobs', onClick: () => navTo({ page: 'jobs' }) }, { label: `Job ${jobId}` }]} />
+        <Breadcrumbs items={[{ label: 'Workloads' }, { label: role === 'admin' ? 'Slurm Jobs' : 'My Jobs', onClick: () => navTo({ page: 'jobs' }) }, { label: `Job ${jobId}` }]} />
         <p className="a5-empty">Job {jobId} not found.</p>
       </>
     )
   }
   const running = j.state === 'RUNNING'
   const adminActions = role === 'admin'
+  const jobOwner = SESSION_USER.user.uid
   return (
     <>
       <Breadcrumbs items={[
         { label: 'Workloads' },
-        { label: 'Slurm Jobs', onClick: () => navTo({ page: 'jobs' }) },
+        { label: role === 'admin' ? 'Slurm Jobs' : 'My Jobs', onClick: () => navTo({ page: 'jobs' }) },
         { label: `Job ${j.id}` },
       ]} />
       <div className="a5-pagehead-row">
@@ -511,11 +534,23 @@ export function JobDetailPage({ jobId, role }: { jobId: number; role: Role }) {
           <button className="aws5-btn aws5-btn--outline aws5-btn--sm" onClick={() => emitToast('success', `scontrol show job ${j.id} copied`)}>
             <Lucide.Copy size={13} />Copy scontrol
           </button>
-          {adminActions && (
+          {adminActions ? (
             <MenuWrap
               label="Actions"
               items={[
                 { label: j.state === 'PENDING' ? 'Release job' : j.state === 'RUNNING' ? 'Cancel job' : 'Requeue job', icon: 'Ban', onClick: () => emitToast('warn', `${j.state === 'PENDING' ? 'Release' : j.state === 'RUNNING' ? 'Cancel' : 'Requeue'} for ${j.id} — simulated`) },
+              ]}
+            />
+          ) : (j.user === jobOwner && (j.state === 'RUNNING' || j.state === 'PENDING')) && (
+            <MenuWrap
+              label="Actions"
+              items={[
+                { label: 'Cancel job', icon: 'Ban', onClick: () => {
+                  const target = JOBS.find((x) => x.id === j.id)
+                  if (target) (target as { state: JobState }).state = 'COMPLETED'
+                  emitToast('info', `scancel ${j.id} issued — job state updated in the simulated queue`)
+                  navTo({ page: 'jobs' })
+                } },
               ]}
             />
           )}
@@ -702,6 +737,7 @@ const VIEW_KEY = 'enucc5.jobsView'
 const COLS_KEY = 'enucc5.jobsCols'
 
 export function JobsPage({ role = 'admin', initialPartition }: { role?: Role; initialPartition?: string }) {
+  const me = SESSION_USER[role]
   const [view, setView] = useState<'table' | 'cards'>(() => (safeGet(VIEW_KEY) === 'cards' ? 'cards' : 'table'))
   useEffect(() => { safeSet(VIEW_KEY, view) }, [view])
 
@@ -714,9 +750,7 @@ export function JobsPage({ role = 'admin', initialPartition }: { role?: Role; in
   const [q, setQ] = useState('')
   const [fState, setFState] = useState<JobState | 'ALL'>('ALL')
   const [fPart, setFPart] = useState(initialPartition ?? 'ALL')
-  const [fUser, setFUser] = useState('ALL')
   const [fAccount, setFAccount] = useState('ALL')
-  const [fQos, setFQos] = useState('ALL')
 
   const [cols, setCols] = useState<ColumnToggles>(() => {
     const saved = safeGet(COLS_KEY)
@@ -727,35 +761,31 @@ export function JobsPage({ role = 'admin', initialPartition }: { role?: Role; in
   const [menuJob, setMenuJob] = useState<JRow | null>(null)
   const [cancelJob, setCancelJob] = useState<JRow | null>(null)
 
-  const all = useMemo(() => allJobs().map((j) => ({ ...j, ...deriveJob(j) })), [tick])
+  const all = useMemo(() => allJobs(me).map((j) => ({ ...j, ...deriveJob(j) })), [me, tick])
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase()
     return all.filter((j) =>
       (!needle || jobSearchKey(j).toLowerCase().includes(needle)) &&
       (fState === 'ALL' || j.state === fState) &&
       (fPart === 'ALL' || j.partition === fPart) &&
-      (fUser === 'ALL' || j.user === fUser) &&
-      (fAccount === 'ALL' || j.account === fAccount) &&
-      (fQos === 'ALL' || j.qos === fQos))
-  }, [all, q, fState, fPart, fUser, fAccount, fQos])
+      (fAccount === 'ALL' || j.account === fAccount))
+  }, [all, q, fState, fPart, fAccount])
 
   return (
     <>
-      <JobsHeader view={view} setView={setView} onExport={() => emitToast('success', 'Queue export queued — simulated')} />
+      <JobsHeader me={me} view={view} setView={setView} onExport={() => emitToast('success', 'Queue export queued — simulated')} />
       <div className="a5-stack a5-stack-lg">
         <Kpis rows={all} active={fState === 'ALL' ? null : fState} onToggle={(s) => setFState(s ?? 'ALL')} />
         <Filters
           q={q} setQ={setQ}
           state={fState} setState={(v) => setFState(v as JobState | 'ALL')}
           part={fPart} setPart={setFPart}
-          user={fUser} setUser={setFUser}
           account={fAccount} setAccount={setFAccount}
-          qos={fQos} setQos={setFQos}
-          onClear={() => { setQ(''); setFState('ALL'); setFPart('ALL'); setFUser('ALL'); setFAccount('ALL'); setFQos('ALL') }}
+          onClear={() => { setQ(''); setFState('ALL'); setFPart('ALL'); setFAccount('ALL') }}
           count={rows.length} total={all.length}
         />
         {view === 'table'
-          ? <JobsTable role={role} rows={rows} cols={cols} setCols={setCols} onConfirmCancel={setCancelJob} />
+          ? <JobsTable me={me} rows={rows} cols={cols} setCols={setCols} onConfirmCancel={setCancelJob} />
           : <JobsCards rows={rows} />}
       </div>
       <JobModal job={menuJob} onClose={() => setMenuJob(null)} role={role} onOpenPage={(id) => navTo({ page: 'jb', jobId: id })} />
@@ -763,7 +793,7 @@ export function JobsPage({ role = 'admin', initialPartition }: { role?: Role; in
         job={cancelJob}
         onClose={() => setCancelJob(null)}
         onConfirm={(job) => {
-          const target = allJobs().find((x) => x.id === job.id)
+          const target = allJobs(me).find((x) => x.id === job.id)
           if (target) (target as { state: JobState }).state = 'COMPLETED'
           setCancelJob(null)
           emitToast('info', `scancel ${job.id} issued — job state updated in the simulated queue`)

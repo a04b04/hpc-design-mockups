@@ -27,13 +27,21 @@ import '../styles/styles.css'
 
 let TERM_SEQ = 1
 
+const A5_ROLE_KEY = 'enucc5.role'
+
 export default function ConsoleApp() {
   const [hash, setHash] = useState(() => window.location.hash)
-  const [role, setRole] = useState<Role>('admin')
+  // Stage 1 (role-aware console): the selected persona persists across reloads
+  // in localStorage so the role survives navigation and refresh.
+  const [role, setRole] = useState<Role>(() => (window.localStorage.getItem(A5_ROLE_KEY) === 'user' ? 'user' : 'admin'))
   const [collapsed, setCollapsed] = useState(false)
   const [termTabs, setTermTabs] = useState<TermTab[]>([])
   const [termActive, setTermActive] = useState<number | null>(null)
   const [dark, setDark] = useState(() => window.localStorage.getItem('enucc5.theme') === 'dark')
+
+  useEffect(() => {
+    window.localStorage.setItem(A5_ROLE_KEY, role)
+  }, [role])
 
   useEffect(() => {
     window.localStorage.setItem('enucc5.theme', dark ? 'dark' : 'light')

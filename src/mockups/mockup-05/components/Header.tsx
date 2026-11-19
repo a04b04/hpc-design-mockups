@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Lucide from 'lucide-react'
 import { Icon } from './ui'
+import { USER_DISPLAY, ROLE_LABELS } from '../data'
 import type { Role } from '../data'
 
 const A5_GROUPS: Array<{ label: string; items: Array<[string, string, string]> }> = [
@@ -32,6 +33,7 @@ export function Header({ role, onRole, onNavigate, onOpenTerminal, dark, onToggl
   }, [])
 
   const roleLabel = role === 'admin' ? 'Administrator' : 'Standard user'
+  const me = USER_DISPLAY[role]
 
   return (
     <header className="aws5-head">
@@ -73,24 +75,27 @@ export function Header({ role, onRole, onNavigate, onOpenTerminal, dark, onToggl
 
       <div className="aws5-menuwrap" ref={userRef}>
         <button className="aws5-head-user" onClick={() => setMenuOpen(!menuOpen)}>
-          <span className="a5-avatar">AB</span>
+          <span className="a5-avatar">{me.initials}</span>
           <span className="a5-user-meta">
-            <b>arun.bhatti</b>
+            <b>{me.uid}</b>
             <small>{roleLabel}</small>
           </span>
           <Lucide.ChevronDown size={12} />
         </button>
         {menuOpen && (
           <div className="aws5-menu right a5-user-menu">
-            <div className="a5-menu-label">Demo persona</div>
+            <div className="a5-menu-label">Simulated role switcher</div>
             <button className={`a5-mi${role === 'admin' ? ' active' : ''}`} onClick={() => { onRole('admin'); setMenuOpen(false) }}>
-              <Lucide.ShieldCheck size={14} />Administrator{role === 'admin' && <Lucide.Check size={13} className="a5-checkmark" />}
+              <Lucide.ShieldCheck size={14} />Administrator — {USER_DISPLAY.admin.uid}{role === 'admin' && <Lucide.Check size={13} className="a5-checkmark" />}
             </button>
             <button className={`a5-mi${role === 'user' ? ' active' : ''}`} onClick={() => { onRole('user'); setMenuOpen(false) }}>
-              <Lucide.User size={14} />Standard user{role === 'user' && <Lucide.Check size={13} className="a5-checkmark" />}
+              <Lucide.User size={14} />Standard user — {USER_DISPLAY.user.uid}{role === 'user' && <Lucide.Check size={13} className="a5-checkmark" />}
             </button>
             <div className="a5-menu-sep" />
-            <div className="a5-menu-note">Switch persona to preview{role === 'admin' ? ' user-restricted' : ' administrator'} console.</div>
+            <div className="a5-menu-note">Simulated persona — no login or real permissions. Switching only changes what this console shows.</div>
+            <div className="a5-menu-note a5-menu-note-sub">
+              Signed in as <b>{me.uid}</b> ({ROLE_LABELS[role]}){me.account ? ` · Slurm account ${me.account}` : ''}
+            </div>
           </div>
         )}
       </div>

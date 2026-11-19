@@ -309,6 +309,47 @@ export const DEMO_USER = {
   remoteDesktop: ['enucc-cpu-003'],
 } as const
 
+/* ------------------------------------------------- role-aware identity --
+ * Stage 1 of the role-aware experience: a simulated current-user context.
+ * The admin persona is the existing demo identity; the standard-user persona
+ * is Shu Chen, an existing Standard user with account/partition memberships
+ * that agree with USERS / SLURM_ACCOUNTS (empty partitions array = unrestricted).
+ * ----------------------------------------------------------------------- */
+export interface SessionIdentity {
+  uid: string
+  name: string
+  role: Role
+  account: string
+  allowedAccounts: string[] // empty = all accounts (administrator)
+  partitions: string[] // empty = all partitions
+}
+
+export const SESSION_USER: Record<Role, SessionIdentity> = {
+  admin: { uid: 'arun.bhatti', name: 'Arun Bhatti', role: 'admin', account: 'staff', allowedAccounts: [], partitions: [] },
+  user: { uid: 's.chen', name: 'Shu Chen', role: 'user', account: 'eng-vis', allowedAccounts: ['eng-vis'], partitions: [] },
+}
+
+export const ROLE_LABELS: Record<Role, string> = { admin: 'Administrator', user: 'Standard user' }
+
+/** Compact header identity for the current persona. */
+export const USER_DISPLAY: Record<Role, { uid: string; initials: string; account: string }> = {
+  admin: { uid: 'arun.bhatti', initials: 'AB', account: 'staff' },
+  user: { uid: 's.chen', initials: 'SC', account: 'eng-vis' },
+}
+
+/** Queue slice for the current persona: admins see the whole controller; standard
+ *  users see their own jobs plus anything charged to one of their Slurm accounts. */
+export function scopedJobs(role: Role): EnJob[] {
+  if (role === 'admin') return JOBS
+  const me = SESSION_USER.user
+  return JOBS.filter((j) => j.user === me.uid || me.allowedAccounts.includes(j.account))
+}
+
+/** Jobs actually owned by the current persona (own cancellations, own history). */
+export function isOwnJob(role: Role, j: EnJob): boolean {
+  return j.user === SESSION_USER[role].uid
+}
+
 // ---------------------------------------------------------------- series --
 
 function buildClusterSeries(): { cpu: number[]; mem: number[]; gpu: number[] } {
