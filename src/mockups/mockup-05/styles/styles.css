@@ -2151,11 +2151,16 @@
 
 /* Roles & Permissions page (stage 3) */
 .aws5 .a5-rp-card { max-width: 780px; }
+/* Allow text to wrap inside roles-table cells (global .aws5-table td is nowrap). */
+.aws5 .a5-rp-tbl td { white-space: normal; vertical-align: top; }
+.aws5 .a5-rp-tbl th { vertical-align: middle; }
+.aws5 .a5-rp-tbl td > .a5-fm-featdesc { white-space: normal; margin-top: 2px; }
 .aws5 .a5-rp-rolelink { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
-.aws5 .a5-rp-desc { font-size: 12px; color: var(--a5-sub); max-width: 260px; }
+.aws5 .a5-rp-rolelink svg { flex-shrink: 0; }
+.aws5 .a5-rp-desc { font-size: 12px; color: var(--a5-sub); max-width: 340px; overflow-wrap: anywhere; }
 .aws5 .a5-rp-gap { margin-left: 10px; }
-.aws5 .a5-rp-prot { color: var(--a5-sub); font-size: 12px; }
-.aws5 .a5-rp-pill { font-size: 10px; font-weight: 600; color: var(--a5-blue); background: var(--a5-blue-bg); border-radius: 99px; padding: 1px 7px; }
+.aws5 .a5-rp-prot { color: var(--a5-sub); font-size: 12px; margin-left: 10px; }
+.aws5 .a5-rp-pill { flex-shrink: 0; font-size: 10px; font-weight: 600; color: var(--a5-blue); background: var(--a5-blue-bg); border-radius: 99px; padding: 1px 7px; }
 .aws5 .a5-rp-featline { display: grid; grid-template-columns: 150px 110px 1fr; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; }
 .aws5 .a5-rp-featline[data-off="true"] { opacity: 0.55; }
 .aws5 .a5-rp-featline:nth-child(odd) { background: var(--a5-line-soft); }

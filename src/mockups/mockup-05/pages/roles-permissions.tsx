@@ -371,7 +371,7 @@ export function RolesPermissionsPage({ role }: { role: Role }) {
       </div>
 
       <div className="aws5-table-wrap" style={{ marginTop: 14 }}>
-        <table className="aws5-table">
+        <table className="aws5-table a5-rp-tbl">
           <thead>
             <tr>
               <th>Role name</th><th>Description</th><th>Users</th><th>Enabled features</th><th>Permissions</th><th className="a5-c">Actions</th>
@@ -386,7 +386,7 @@ export function RolesPermissionsPage({ role }: { role: Role }) {
                     {rd.persona === 'admin' && <Lucide.Lock size={11} />}
                     {rd.persona === 'user' && <span className="a5-rp-pill">Live</span>}
                   </button>
-                  <div className="a5-fm-featdesc">
+                  <div className="a5-fm-featdesc a5-t-h">
                     {rd.persona === 'admin' ? 'Protected system role' : rd.persona === 'user' ? 'Feature-managed live configuration' : 'Simulated role (prototype)'}
                   </div>
                 </td>
