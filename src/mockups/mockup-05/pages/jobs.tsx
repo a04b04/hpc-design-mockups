@@ -6,6 +6,7 @@ import {
 } from '../components/ui'
 import { JOBS, PARTITIONS, SESSION_USER, isOwnJob, scopedJobs } from '../data'
 import type { EnJob, JobState, Role, SessionIdentity } from '../data'
+import { canPerformAction, isFeatureEnabled } from '../pages/feature-flags'
 
 /* The Submit Job page pushes simulated submissions into this same array, so
  * freshly submitted jobs appear here without a separate dataset. */
@@ -240,9 +241,11 @@ void OPT_COLS
 
 function JobsRow({ j, me, cols, onMenu }: { j: JRow; me: SessionIdentity; cols: ColumnToggles; onMenu: (j: JRow) => void }) {
   const open = () => navTo({ page: 'jb', jobId: j.id })
-  const adminActions = me.role === 'admin'
+  // Stage 2: 'manage' on the jobs feature governs hold/release/requeue and
+  // cancelling other users' jobs; cancelling your own jobs stays allowed.
+  const adminActions = me.role === 'admin' && canPerformAction('jobs', 'admin', 'manage')
   // Standard users may cancel their own queued/running jobs; hold/release/requeue stay administrator-only.
-  const canCancel = (adminActions || isOwnJob(me.role, j)) && (j.state === 'RUNNING' || j.state === 'PENDING')
+  const canCancel = ((adminActions || isOwnJob(me.role, j)) && isFeatureEnabled('jobs')) && (j.state === 'RUNNING' || j.state === 'PENDING')
   return (
     <tr>
       <td className="mono a5-name-link" onClick={open}>{j.id}</td>
@@ -270,9 +273,9 @@ function JobsRow({ j, me, cols, onMenu }: { j: JRow; me: SessionIdentity; cols: 
             { label: 'View details', icon: 'Eye', onClick: open },
             { label: 'Copy job ID', icon: 'Copy', onClick: () => emitToast('success', `${j.id} copied`) },
             { sep: true, label: '' },
-            { label: 'Hold', icon: 'Pause', disabled: j.state !== 'PENDING', onClick: adminActions ? () => emitToast('warn', `Job ${j.id} held — simulated`) : undefined },
-            { label: 'Release', icon: 'Play', disabled: j.state !== 'PENDING', onClick: adminActions ? () => emitToast('success', `Job ${j.id} released — simulated`) : undefined },
-            { label: 'Requeue', icon: 'RotateCcw', disabled: j.state !== 'COMPLETED' && j.state !== 'FAILED', onClick: adminActions ? () => emitToast('warn', `Job ${j.id} requeued — simulated`) : undefined },
+            { label: 'Hold', icon: 'Pause', disabled: !adminActions || j.state !== 'PENDING', onClick: adminActions && j.state === 'PENDING' ? () => emitToast('warn', `Job ${j.id} held — simulated`) : undefined },
+            { label: 'Release', icon: 'Play', disabled: !adminActions || j.state !== 'PENDING', onClick: adminActions && j.state === 'PENDING' ? () => emitToast('success', `Job ${j.id} released — simulated`) : undefined },
+            { label: 'Requeue', icon: 'RotateCcw', disabled: !adminActions || j.state !== 'COMPLETED' && j.state !== 'FAILED', onClick: adminActions && (j.state === 'COMPLETED' || j.state === 'FAILED') ? () => emitToast('warn', `Job ${j.id} requeued — simulated`) : undefined },
             { label: 'Cancel', icon: 'Ban', kind: 'danger', disabled: !canCancel, onClick: canCancel ? () => onMenu(j) : undefined },
           ]}
         />
@@ -516,7 +519,9 @@ export function JobDetailPage({ jobId, role }: { jobId: number; role: Role }) {
     )
   }
   const running = j.state === 'RUNNING'
-  const adminActions = role === 'admin'
+  // Stage 2: 'manage' on the jobs feature governs the administrator actions
+  // menu; owners may still cancel their own queued/running jobs.
+  const adminActions = role === 'admin' && canPerformAction('jobs', 'admin', 'manage')
   const jobOwner = SESSION_USER.user.uid
   return (
     <>

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Icon } from './ui'
 import type { A5Route } from './ui'
 import type { Role } from '../data'
+import { PAGE_FEATURE, canAccessFeature, isFeatureEnabled } from '../pages/feature-flags'
 
 type NavItem = { label: string; page: A5Route['page']; icon: string }
 type NavGroup = { label: string; admin?: boolean; items: NavItem[] }
@@ -36,6 +37,7 @@ const GROUPS: NavGroup[] = [
   ] },
   { label: 'Administration', admin: true, items: [
     { label: 'Feature Management', page: 'feature-mgmt', icon: 'ToggleRight' },
+    { label: 'Roles & Permissions', page: 'roles', icon: 'ShieldCheck' },
     { label: 'Users & Groups', page: 'users', icon: 'Users' },
     { label: 'Slurm Accounts', page: 'slurm-accounts', icon: 'Landmark' },
     { label: 'Quality of Service (QoS)', page: 'qos', icon: 'SlidersHorizontal' },
@@ -52,7 +54,25 @@ export function Sidebar({ page, role, collapsed, onToggle, onNavigate }: {
   onNavigate: (p: A5Route['page']) => void
 }) {
   const isAdmin = role === 'admin'
-  const visibleGroups = useMemo(() => GROUPS.filter((g) => !g.admin || isAdmin), [isAdmin])
+  // Stage 2: per-feature navigation. Hide a nav item when its governing
+  // feature is disabled or hidden from this role; drop groups that end up
+  // empty. The Administration group additionally requires the admin persona.
+  const navItemAllowed = useMemo(() => {
+    const allowed = (it: NavItem): boolean => {
+      const fid = PAGE_FEATURE[it.page] ?? 'jobs'
+      return it.page === 'dashboard' || (fid === 'jobs'
+        ? (isAdmin || isFeatureEnabled('jobs'))
+        : canAccessFeature(fid, role))
+    }
+    return (it: NavItem) => allowed(it)
+  }, [role, isAdmin])
+  const visibleGroups = useMemo(
+    () => GROUPS
+      .filter((g) => !g.admin || isAdmin)
+      .map((g) => ({ ...g, items: g.items.filter(navItemAllowed) }))
+      .filter((g) => g.items.length > 0),
+    [isAdmin, navItemAllowed],
+  )
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}
     for (const g of visibleGroups) init[g.label] = false
@@ -83,8 +103,7 @@ export function Sidebar({ page, role, collapsed, onToggle, onNavigate }: {
         </button>
       </div>
       <nav className="aws5-side-nav">
-        {GROUPS.map((g) => {
-          if (g.admin && !isAdmin) return null
+        {visibleGroups.map((g) => {
           const isOpen = !!expanded[g.label] || collapsed
           return (
             <div key={g.label} className="aws5-nav-group">

@@ -6,6 +6,7 @@ import {
 } from '../components/ui'
 import { NODES, RESERVATIONS } from '../data'
 import type { Role } from '../data'
+import { canPerformAction } from '../pages/feature-flags'
 
 /** Reservation window flags are derived from the frozen cluster clock, so the
  * numbers stay stable across renders (the rest of the console behaves the
@@ -79,7 +80,7 @@ function ReservationsHeader({ role, view, setView }: { role: Role; view: 'table'
             <button className={view === 'table' ? 'active' : ''} onClick={() => setView('table')}>Table</button>
             <button className={view === 'cards' ? 'active' : ''} onClick={() => setView('cards')}>Cards</button>
           </div>
-          {role === 'admin' && (
+          {canPerformAction('reservations', role, 'manage') && (
             <MenuWrap
               label="Actions"
               items={[
@@ -182,8 +183,8 @@ function ReservationRow({ r, role }: { r: ResRow; role: Role }) {
           items={[
             { label: 'Open details', icon: 'Eye', onClick: open },
             { label: 'Copy name', icon: 'Copy', onClick: () => emitToast('success', `${r.name} copied`) },
-            { label: 'Extend 24h', icon: 'CalendarClock', kind: 'warn', disabled: role !== 'admin', onClick: () => emitToast('warn', `+24h requested for ${r.name} — simulated`) },
-            { label: 'Cancel reservation', icon: 'Ban', kind: 'danger', disabled: role !== 'admin', onClick: () => emitToast('error', 'Cancel rejected in demo mode') },
+            { label: 'Extend 24h', icon: 'CalendarClock', kind: 'warn', disabled: !canPerformAction('reservations', role, 'manage'), onClick: () => emitToast('warn', `+24h requested for ${r.name} — simulated`) },
+            { label: 'Cancel reservation', icon: 'Ban', kind: 'danger', disabled: !canPerformAction('reservations', role, 'manage'), onClick: () => emitToast('error', 'Cancel rejected in demo mode') },
           ]}
         />
       </td>
@@ -266,7 +267,7 @@ function ReservationCard({ r, role }: { r: ResRow; role: Role }) {
             ? <span className="a5-flagchip a5-flagchip--warn"><Lucide.TriangleAlert size={11} />Tight today</span>
             : <span className="a5-flagchip a5-flagchip--ok"><Lucide.CheckCircle2 size={11} />On track</span>}
           {fl.includes('soon') && <span className="a5-flagchip a5-flagchip--info"><Lucide.Clock size={11} />Soon</span>}
-          {role === 'admin'
+          {canPerformAction('reservations', role, 'manage')
             ? <button className="a5-name-link" onClick={() => emitToast('warn', `Extend ${r.name} — simulated`)}>Extend</button>
             : <span className="sub">Read-only</span>}
         </div>
@@ -309,7 +310,7 @@ export function ReservationDetailPage({ name, role = 'admin' }: { name: string; 
               <button className="aws5-btn aws5-btn--outline aws5-btn--sm" onClick={() => emitToast('success', 'Copied scontrol snippet')}>
                 <Lucide.Copy size={13} />Copy scontrol
               </button>
-              {role === 'admin' && (
+              {canPerformAction('reservations', role, 'manage') && (
                 <button className="aws5-btn aws5-btn--sm" onClick={() => emitToast('warn', 'Extend requested — simulated')}>
                   <Lucide.CalendarClock size={13} />Extend 24h
                 </button>

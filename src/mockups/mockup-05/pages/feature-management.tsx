@@ -94,12 +94,12 @@ function ConfigurePanel({ def, cfg, role, onClose }: {
           <button className="a5-iconbtn" onClick={onClose} aria-label="Close panel"><Lucide.X size={15} /></button>
         </div>
         <div className="a5-fm-body">
-          <div className={`a5-fm-note${confirmDisable ? '--amber' : ''}`}>
+          <div className={`${'a5-fm-note'}${confirmDisable ? ' a5-fm-note--amber' : ''}`}>
             <Lucide.ShieldAlert size={14} />
             <span>
               {confirmDisable
                 ? `Disable “${def.name}” for every role, including administrators?${def.protected ? ' Protected features cannot be disabled.' : ''}`
-                : 'Disabling a feature makes it unavailable to every role (including administrators) until it is re-enabled here. Enforcement across pages and navigation activates in Stage 2.'}
+                : 'Disabling a feature makes it unavailable to every role (including administrators) until it is re-enabled here. Changes take effect immediately across navigation and pages.'}
             </span>
           </div>
           <div className="a5-fm-row"><span className="a5-f-lbl">Global availability</span>
@@ -120,7 +120,7 @@ function ConfigurePanel({ def, cfg, role, onClose }: {
             )}
           </div>
           {form.enabled === false && def.protected && <div className="a5-hintbox">Protected features such as Administration cannot be globally disabled.</div>}
-          {form.enabled === false && !def.protected && <div className="a5-hintbox">Globally disabled features are hidden from every role (enforced from Stage 2 — until then the page still loads).</div>}
+          {form.enabled === false && !def.protected && <div className="a5-hintbox">Globally disabled features are hidden from every role and every page that opens them is blocked.</div>}
           {roleKeys.map((k) => (
             <div className="a5-fm-role" key={k}>
               <div className="a5-fm-row">
@@ -142,7 +142,7 @@ function ConfigurePanel({ def, cfg, role, onClose }: {
                   </button>
                 ))}
               </div>
-              {!form.access[k].visible && <div className="a5-hintbox">Hidden and no permissions — this role cannot open or use this feature (enforced from Stage 2).</div>}
+              {!form.access[k].visible && <div className="a5-hintbox">Hidden and no permissions — this role cannot open or use this feature.</div>}
             </div>
           ))}
           {def.rollout && <div className="a5-hintbox">{def.rollout}</div>}

@@ -5,8 +5,8 @@ import {
   Breadcrumbs, Card, CardB, CardH, emitToast, navTo,
 } from '../components/ui'
 import { FILESYSTEMS, USER_QUOTA } from '../data'
-
-// ---------------------------------------------------------------- types --
+import type { Role } from '../data'
+import { canPerformAction, isFeatureEnabled } from '../pages/feature-flags'
 
 type FsKind = 'User' | 'Group' | 'Project'
 
@@ -212,7 +212,11 @@ function extOf(name: string): string {
 
 // ------------------------------------------------------------ component --
 
-export function FileBrowserPage() {
+export function FileBrowserPage({ role }: { role: Role }) {
+  // Stage 2: what the selected role may do with files is governed centrally by
+  // the feature configuration; the page only asks for the results.
+  const mayDownload = canPerformAction('file-browser', role, 'download')
+  const mayUpload = canPerformAction('file-browser', role, 'upload') && isFeatureEnabled('file-uploads')
   const [mount, setMount] = useState<string>('/home')
   const [path, setPath] = useState<string[]>(['home'])
   const [q, setQ] = useState('')
@@ -269,8 +273,9 @@ export function FileBrowserPage() {
   }
 
   const open = (e: FsEntry): void => {
-    if (e.kind === 'dir') goPath([...path, e.name])
-    else emitToast('info', `Download simulated — downloading ${e.name} from ${mount}`)
+    if (e.kind === 'dir') { goPath([...path, e.name]); return }
+    if (!mayDownload) { emitToast('warn', 'Downloads are disabled for your role by the administrator'); return }
+    emitToast('info', `Download simulated — downloading ${e.name} from ${mount}`)
   }
 
   const toggleSort = (key: 'name' | 'size' | 'mtime'): void => {
@@ -289,6 +294,7 @@ export function FileBrowserPage() {
           <div className="a5-pagehead-sub">Read-only, simulated view of the cluster filesystems · no real I/O</div>
         </div>
         <div className="a5-pagehead-actions">
+          {mayUpload && <button className="aws5-btn aws5-btn--sm" onClick={() => emitToast('info', 'Upload dialog — simulated')}><Lucide.Upload size={13} />Upload</button>}
           <button className="aws5-btn aws5-btn--outline aws5-btn--sm" onClick={() => navTo({ page: 'quotas' })}><Lucide.Gauge size={13} />Quotas</button>
           <button className="aws5-btn aws5-btn--outline aws5-btn--sm" onClick={() => navTo({ page: 'terminal' })}><Lucide.Terminal size={13} />Open terminal</button>
         </div>
