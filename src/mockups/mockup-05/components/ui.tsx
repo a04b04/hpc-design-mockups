@@ -352,9 +352,10 @@ export type A5Route =
   | { page: 'cluster-health' } | { page: 'resource-utilisation' } | { page: 'alerts' }
   | { page: 'terminal' } | { page: 'remote-desktop' }
   | { page: 'users' } | { page: 'slurm-accounts' } | { page: 'qos' } | { page: 'node-mgmt' } | { page: 'configuration' }
+  | { page: 'feature-mgmt' }
 
 export const A5_NAV_PERMISSIONS: Record<string, 'all' | 'admin'> = {
-  'users': 'admin', 'slurm-accounts': 'admin', 'qos': 'admin', 'node-mgmt': 'admin', 'configuration': 'admin',
+  'users': 'admin', 'slurm-accounts': 'admin', 'qos': 'admin', 'node-mgmt': 'admin', 'configuration': 'admin', 'feature-mgmt': 'admin',
 }
 
 export function routeToHash(r: A5Route): string {
@@ -381,7 +382,7 @@ export function parseHash(hash: string): A5Route | null {
   if (seg === 'filesystems' && arg) return { page: 'fs', fs: arg }
   if (seg === 'jobs' && arg) return { page: 'jb', jobId: Number(arg) }
   if (part && (seg === 'nodes' || seg === 'jobs')) return { page: seg, partition: part } as A5Route
-  const known = ['dashboard', 'nodes', 'partitions', 'reservations', 'jobs', 'submit-job', 'job-templates', 'job-history', 'filesystems', 'file-browser', 'quotas', 'cluster-health', 'resource-utilisation', 'alerts', 'terminal', 'remote-desktop', 'users', 'slurm-accounts', 'qos', 'node-mgmt', 'configuration']
+  const known = ['dashboard', 'nodes', 'partitions', 'reservations', 'jobs', 'submit-job', 'job-templates', 'job-history', 'filesystems', 'file-browser', 'quotas', 'cluster-health', 'resource-utilisation', 'alerts', 'terminal', 'remote-desktop', 'users', 'slurm-accounts', 'qos', 'node-mgmt', 'configuration', 'feature-mgmt']
   if (known.includes(seg)) return { page: seg } as A5Route
   return null
 }

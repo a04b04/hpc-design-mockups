@@ -2099,3 +2099,46 @@
 .aws5 .a5-quota-row .a5-quota-label { font-size: 12px; color: var(--a5-sub); }
 .aws5 .a5-quota-row small { font-size: 11.5px; color: var(--a5-muted); text-align: right; }
 .aws5 .a5-userstrip-note { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--a5-line-soft); font-size: 11.5px; color: var(--a5-muted); }
+
+/* --- Feature Management (Stage 1) ------------------------------------------ */
+.aws5 .a5-fm-titlewrap { min-width: 0; }
+.aws5 .a5-fm-stats { margin-top: 2px; }
+.aws5 .a5-fm-stat { padding: 12px 14px; }
+.aws5 .a5-fm-stat-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.aws5 .a5-fm-featname { font-size: 13px; font-weight: 590; color: var(--a5-ink); }
+.aws5 .a5-fm-featdesc { font-size: 11.5px; color: var(--a5-sub); margin-top: 1px; max-width: 420px; }
+.aws5 .a5-fm-featname .a5-tag-prot { display: inline-block; margin-left: 6px; }
+.aws5 .a5-fm-cell { font-size: 12.5px; color: var(--a5-ink); }
+.aws5 .a5-fm-cellact { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+.aws5 .a5-fm-audit { display: flex; flex-direction: column; }
+.aws5 .a5-fm-auditrow { display: grid; grid-template-columns: 150px 120px 190px 1fr; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--a5-line-soft); font-size: 12px; align-items: baseline; }
+.aws5 .a5-fm-auditrow:last-child { border-bottom: 0; }
+.aws5 .a5-fm-auditrow > span:first-child, .aws5 .a5-fm-auditrow > span:nth-child(2) { color: var(--a5-sub); }
+.aws5 .a5-fm-auditrow > span:nth-child(3) { font-weight: 590; color: var(--a5-ink); }
+.aws5 .a5-fm-auditrow > span:last-child { color: var(--a5-sub); min-width: 0; overflow-wrap: anywhere; }
+
+.aws5 .a5-fm-veil { position: fixed; inset: 0; z-index: 95; background: rgba(15, 23, 42, 0.45); display: flex; align-items: flex-start; justify-content: center; padding: 8vh 16px 16px; }
+.aws5 .a5-fm-card { width: 620px; max-width: 100%; max-height: 82vh; overflow: hidden; display: flex; flex-direction: column; background: var(--a5-card); border: 1px solid var(--a5-line); border-radius: 10px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22); }
+.aws5 .a5-fm-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--a5-line-soft); }
+.aws5 .a5-fm-title { font-size: 14px; font-weight: 650; color: var(--a5-ink); }
+.aws5 .a5-fm-sub { font-size: 11.5px; color: var(--a5-sub); }
+.aws5 .a5-fm-body { padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.aws5 .a5-fm-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--a5-line-soft); }
+.aws5 .a5-fm-note { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--a5-sub); background: var(--a5-line-soft); border-radius: 8px; padding: 9px 11px; }
+.aws5 .a5-fm-note svg { flex-shrink: 0; margin-top: 1px; color: var(--a5-blue); }
+.aws5 .a5-fm-note--amber { color: var(--a5-amber); background: var(--a5-amber-bg); }
+.aws5 .a5-fm-note--amber svg { color: var(--a5-amber); }
+.aws5 .a5-fm-role { border: 1px solid var(--a5-line-soft); border-radius: 8px; padding: 11px 12px; display: flex; flex-direction: column; gap: 9px; }
+.aws5 .a5-fm-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.aws5 .a5-chipgrid { display: flex; flex-wrap: wrap; gap: 6px; }
+.aws5 .a5-permchip { font-size: 11px; padding: 3px 9px; border-radius: 99px; border: 0; cursor: pointer; transition: background 0.12s, color 0.12s; }
+.aws5 .a5-permchip--on { background: var(--a5-blue-bg); color: var(--a5-blue); font-weight: 550; }
+.aws5 .a5-permchip--on[data-off="true"] { background: var(--a5-line-soft); color: var(--a5-sub); font-weight: 450; }
+.aws5 .a5-hintbox { font-size: 11.5px; color: var(--a5-muted); background: var(--a5-line-soft); border-radius: 6px; padding: 6px 9px; }
+
+.aws5.aws5-dark .a5-fm-auditrow, .aws5.aws5-dark .a5-fm-role, .aws5.aws5-dark .a5-fm-note { border-color: var(--a5-line-soft); }
+.aws5.aws5-dark .a5-fm-card { background: var(--a5-card); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5); }
+@media (max-width: 700px) {
+  .aws5 .a5-fm-auditrow { grid-template-columns: 116px 1fr; }
+  .aws5 .a5-fm-auditrow > span:nth-child(2), .aws5 .a5-fm-auditrow > span:nth-child(3) { display: none; }
+}

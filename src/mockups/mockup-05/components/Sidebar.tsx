@@ -35,6 +35,7 @@ const GROUPS: NavGroup[] = [
     { label: 'Remote Desktop', page: 'remote-desktop', icon: 'Monitor' },
   ] },
   { label: 'Administration', admin: true, items: [
+    { label: 'Feature Management', page: 'feature-mgmt', icon: 'ToggleRight' },
     { label: 'Users & Groups', page: 'users', icon: 'Users' },
     { label: 'Slurm Accounts', page: 'slurm-accounts', icon: 'Landmark' },
     { label: 'Quality of Service (QoS)', page: 'qos', icon: 'SlidersHorizontal' },

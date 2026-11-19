@@ -15,6 +15,7 @@ import { JobTemplatesPage } from '../pages/job-templates'
 import { PartitionsPage, PartitionDetailPage } from '../pages/partitions'
 import { ReservationsPage, ReservationDetailPage } from '../pages/reservations'
 import { SlurmAccountsPage, UsersPage } from '../pages/cluster-pages'
+import { FeatureManagementPage } from '../pages/feature-management'
 import { FilesystemsPage, FilesystemDetailPage, QuotasPage } from '../pages/storage-pages'
 import { SubmitJobPage } from '../pages/submit-job'
 import {
@@ -123,6 +124,7 @@ export default function ConsoleApp() {
       case 'qos': return <QosPage />
       case 'node-mgmt': return <NodeManagementPage />
       case 'configuration': return <ConfigurationPage />
+      case 'feature-mgmt': return <FeatureManagementPage role={role} />
       default: return <DashboardPage role={role} />
     }
   })()
