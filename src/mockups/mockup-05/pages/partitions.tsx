@@ -6,7 +6,7 @@ import {
   Tabs, emitToast, navTo,
 } from '../components/ui'
 import {
-  JOBS, NODES, PARTITIONS, QOS_LIST, RESERVATIONS, SYS_ALERTS, seriesPoints,
+  NODES, PARTITIONS, QOS_LIST, RESERVATIONS, SYS_ALERTS, SESSION_USER, scopedJobs, seriesPoints,
 } from '../data'
 import type { EnNode, EnJob, Role } from '../data'
 import { walk } from '../../../lib/helios-lib'
@@ -59,13 +59,19 @@ function parseMemGB(res: string): number {
   return m ? Number(m[1]) : 0
 }
 
-function partitionJobs(name: string) {
-  const running = JOBS.filter((j) => j.partition === name && j.state === 'RUNNING')
-  const pending = JOBS.filter((j) => j.partition === name && j.state === 'PENDING')
-  const cpus = running.reduce((acc, j) => acc + parseCpus(j.resources), 0)
-  const gpus = running.reduce((acc, j) => acc + parseGpus(j.resources), 0)
-  const memGB = running.reduce((acc, j) => acc + parseMemGB(j.resources), 0)
-  return { running, pending, cpus, gpus, memGB }
+/** Visible jobs on a partition for the current persona: administrators see the
+ * whole controller; standard users only see their own accounts' work. */
+function partitionJobsScoped(name: string, role: Role) {
+  const jobs = scopedJobs(role)
+  const onPart = jobs.filter((j) => j.partition === name)
+  const running = onPart.filter((j) => j.state === 'RUNNING')
+  return {
+    running,
+    pending: onPart.filter((j) => j.state === 'PENDING'),
+    cpus: running.reduce((acc, j) => acc + parseCpus(j.resources), 0),
+    gpus: running.reduce((acc, j) => acc + parseGpus(j.resources), 0),
+    memGB: running.reduce((acc, j) => acc + parseMemGB(j.resources), 0),
+  }
 }
 
 function memPerNodeStr(p: Partition): string {
@@ -98,10 +104,10 @@ function ptHistory(i: number): Array<{ cpu: number; mem: number }> {
 // Card grid (list view)
 // ---------------------------------------------------------------------------
 
-function PartitionCard({ p }: { p: Partition }) {
+function PartitionCard({ p, role }: { p: Partition; role: Role }) {
   const nodes = partitionNodes(p.name)
   const t = nodesStateTally(nodes)
-  const j = partitionJobs(p.name)
+  const j = partitionJobsScoped(p.name, role)
   const allocCores = nodes.reduce((acc, n) => acc + (n.state === 'ALLOCATED' ? Math.round((n.cpuUtil / 100) * n.cores) : 0), 0)
   const totalCores = nodes.reduce((acc, n) => acc + n.cores, 0)
   const allocGpus = Math.min(j.gpus, p.gpus) || 0
@@ -159,22 +165,23 @@ function PartitionCard({ p }: { p: Partition }) {
   )
 }
 
-function PartitionListPage() {
+function PartitionListPage({ role }: { role: Role }) {
+  const isUser = role === 'user'
   return (
     <>
       <Breadcrumbs items={[{ label: 'Compute' }, { label: 'Partitions' }]} />
       <div className="a5-pagehead-row">
         <div>
-          <h1 className="aws5-h1"><Icon name="Layers" size={19} /> Partitions</h1>
-          <div className="a5-pagehead-sub">{PARTITIONS.length} configured partitions · resource figures derived from live node and job state</div>
+          <h1 className="aws5-h1"><Icon name="Layers" size={19} /> {isUser ? 'My Partitions' : 'Partitions'}</h1>
+          <div className="a5-pagehead-sub">{PARTITIONS.length} configured partitions · {isUser ? `visible to ${SESSION_USER.user.account} · queue and job figures scoped to your account` : 'resource figures derived from live node and job state'}</div>
         </div>
       </div>
       <div className="a5-stack a5-stack-lg">
         <div className="a5-four">
-          {PARTITIONS.map((p) => <PartitionCard key={p.name} p={p} />)}
+          {PARTITIONS.map((p) => <PartitionCard key={p.name} p={p} role={role} />)}
         </div>
-        <PartitionTable />
-        <p className="a5-footnote"><Lucide.TriangleAlert size={13} /> Click a partition for its nodes, jobs and queue. Figures are derived live from the shared node and job dataset.</p>
+        <PartitionTable role={role} />
+        <p className="a5-footnote"><Lucide.TriangleAlert size={13} /> Click a partition for its nodes, jobs and queue. Figures are derived live from the shared node and job dataset{isUser ? ' and scoped to your Slurm account' : ''}.</p>
       </div>
     </>
   )
@@ -184,13 +191,13 @@ function PartitionListPage() {
 // Comparison table
 // ---------------------------------------------------------------------------
 
-function PartitionTable() {
+function PartitionTable({ role }: { role: Role }) {
   const [sort, setSort] = useState({ col: 'name', asc: true })
 
   const rows = useMemo(() => {
     const built = PARTITIONS.map((p) => {
       const nodes = partitionNodes(p.name)
-      const jobs = partitionJobs(p.name)
+      const jobs = partitionJobsScoped(p.name, role)
       const t = nodesStateTally(nodes)
       return {
         p, t,
@@ -222,7 +229,7 @@ function PartitionTable() {
       return (va - vb) * dir
     })
     return built
-  }, [sort])
+  }, [sort, role])
 
   const onSort = (c: string) => setSort((s) => (s.col === c ? { col: c, asc: !s.asc } : { col: c, asc: true }))
 
@@ -373,7 +380,8 @@ export function PartitionDetailPage({ name, role = 'admin' }: { name: string; ro
   const idx = PARTITIONS.indexOf(p)
   const nodes = partitionNodes(p.name)
   const t = nodesStateTally(nodes)
-  const j = partitionJobs(p.name)
+  const j = partitionJobsScoped(p.name, role)
+  const isUser = role === 'user'
   const hist = ptHistory(idx)
   const upPct = nodes.length ? Math.round(((nodes.length - t.down) / nodes.length) * 100) : 0
   const alertCount = SYS_ALERTS.filter((a) => a.service === 'Nodes' && a.title.includes(p.name)).length
@@ -489,8 +497,8 @@ export function PartitionDetailPage({ name, role = 'admin' }: { name: string; ro
           </div>
 
           <Card>
-            <CardH right={<span className="ptx-hint">{j.running.length} running · <button className="ptx-link" onClick={() => navTo({ page: 'jobs', partition: p.name })}>open Slurm Jobs filtered to {p.name}</button></span>}>Running jobs on {p.name}</CardH>
-            <PartitionJobsTable jobs={j.running.slice(0, 6)} empty={`No running jobs on ${p.name}.`} />
+            <CardH right={<span className="ptx-hint">{j.running.length} running{isUser ? ' · your account only' : ''} · <button className="ptx-link" onClick={() => navTo({ page: 'jobs', partition: p.name })}>open Slurm Jobs filtered to {p.name}</button></span>}>{isUser ? `Your running jobs on ${p.name}` : `Running jobs on ${p.name}`}</CardH>
+            <PartitionJobsTable jobs={j.running.slice(0, 6)} empty={isUser ? 'No running jobs charged to your account on this partition.' : `No running jobs on ${p.name}.`} />
             {j.running.length > 6 && (
               <div className="ptx-cardfoot">
                 <span className="ptx-hint">Top 6 by priority</span>
@@ -519,12 +527,12 @@ export function PartitionDetailPage({ name, role = 'admin' }: { name: string; ro
       {tab === 'Jobs' && (
         <div className="a5-stack">
           <Card>
-            <CardH right={<span className="ptx-hint">{j.running.length} running · {j.pending.length} pending · <button className="ptx-link" onClick={() => navTo({ page: 'jobs', partition: p.name })}>open in Slurm Jobs</button></span>}>Jobs on {p.name}</CardH>
-            <PartitionJobsTable jobs={[...j.running, ...j.pending].slice(0, 25)} empty={`No jobs on ${p.name}.`} />
+            <CardH right={<span className="ptx-hint">{j.running.length} running · {j.pending.length} pending{isUser ? ' · your account only' : ''} · <button className="ptx-link" onClick={() => navTo({ page: 'jobs', partition: p.name })}>open in Slurm Jobs</button></span>}>{isUser ? `Your jobs on ${p.name}` : `Jobs on ${p.name}`}</CardH>
+            <PartitionJobsTable jobs={[...j.running, ...j.pending].slice(0, 25)} empty={isUser ? 'You have no jobs on this partition.' : `No jobs on ${p.name}.`} />
           </Card>
           <Card>
-            <CardH right={<span className="ptx-hint">jobs awaiting resources</span>}>Pending queue — {p.name}</CardH>
-            <PartitionJobsTable jobs={j.pending} empty={`Queue empty — no pending jobs on ${p.name}.`} />
+            <CardH right={<span className="ptx-hint">jobs awaiting resources{isUser ? ' · your account only' : ''}</span>}>{isUser ? `Your pending queue — ${p.name}` : `Pending queue — ${p.name}`}</CardH>
+            <PartitionJobsTable jobs={j.pending} empty={isUser ? 'Nothing of yours pending on this partition.' : `Queue empty — no pending jobs on ${p.name}.`} />
           </Card>
         </div>
       )}
@@ -551,8 +559,8 @@ export function PartitionDetailPage({ name, role = 'admin' }: { name: string; ro
             </div>
           </Card>
           <Card>
-            <CardH right={<span className="ptx-hint">{j.pending.length} jobs</span>}>Pending queue — {p.name}</CardH>
-            <PartitionJobsTable jobs={j.pending} empty={`Queue empty — nothing waiting on ${p.name}.`} />
+            <CardH right={<span className="ptx-hint">{j.pending.length} jobs{isUser ? ' · your account only' : ''}</span>}>{isUser ? `Your pending queue — ${p.name}` : `Pending queue — ${p.name}`}</CardH>
+            <PartitionJobsTable jobs={j.pending} empty={isUser ? 'Nothing of yours pending here.' : `Queue empty — nothing waiting on ${p.name}.`} />
             <div className="ptx-cardfoot"><span className="ptx-hint">Reasons are read from the scheduler snapshot (simulated).</span></div>
           </Card>
         </div>
@@ -640,8 +648,10 @@ function PartitionNodesTable({ nodes, role }: { nodes: EnNode[]; role: Role }) {
                     { label: 'View details', icon: 'Eye', onClick: () => navTo({ page: 'node', node: n.name }) },
                     { label: 'Connect via SSH', icon: 'SquareTerminal', onClick: () => emitToast('info', `Opening terminal to ${n.name}… (simulated)`) },
                     { label: 'Copy node name', icon: 'Copy', onClick: () => emitToast('success', `${n.name} copied`) },
-                    { label: 'Drain node', icon: 'Ban', kind: 'warn', disabled: role !== 'admin', onClick: () => emitToast('warn', `Drain requested for ${n.name} (simulated)`) },
-                    { label: 'Power off node', icon: 'Power', kind: 'danger', disabled: role !== 'admin', onClick: () => emitToast('error', 'Power off rejected in demo mode') },
+                    ...(role === 'admin' ? [
+                      { label: 'Drain node', icon: 'Ban' as const, kind: 'warn' as const, onClick: () => emitToast('warn', `Drain requested for ${n.name} (simulated)`) },
+                      { label: 'Power off node', icon: 'Power' as const, kind: 'danger' as const, onClick: () => emitToast('error', 'Power off rejected in demo mode') },
+                    ] : []),
                   ]}
                 />
               </td>

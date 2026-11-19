@@ -59,6 +59,7 @@ export function NodesPage({ role, initialPartition }: { role: Role; initialParti
   const cur = Math.min(page, pages)
   const rows = filtered.slice((cur - 1) * PER, cur * PER)
   const tally = (s: SlurmState) => NODES.filter((n) => n.state === s).length
+  const isUser = role === 'user'
 
   const toggleSel = (name: string) => {
     setSelected((prev) => {
@@ -78,8 +79,8 @@ export function NodesPage({ role, initialPartition }: { role: Role; initialParti
       <Breadcrumbs items={[{ label: 'Compute' }, { label: 'Nodes' }]} />
       <div className="a5-pagehead-row">
         <div>
-          <h1 className="aws5-h1">Nodes</h1>
-          <div className="a5-pagehead-sub">{NODES.length} nodes across {PARTITIONS.length} partitions</div>
+          <h1 className="aws5-h1">{isUser ? 'Node Explorer' : 'Nodes'}</h1>
+          <div className="a5-pagehead-sub">{NODES.length} nodes across {PARTITIONS.length} partitions · {isUser ?'monitoring only — drain and power actions are administrator-only' : 'full cluster view'}</div>
         </div>
         <div className="a5-pagehead-actions">
           <NodesViewSelector view={viewMode} onChange={setViewMode} />
@@ -175,8 +176,10 @@ export function NodesPage({ role, initialPartition }: { role: Role; initialParti
                       { label: 'View details', icon: 'Eye', onClick: () => navTo({ page: 'node', node: n.name }) },
                       { label: 'Connect via SSH', icon: 'SquareTerminal', onClick: () => emitToast('info', `Opening terminal to ${n.name}… — simulated`) },
                       { label: 'Copy node name', icon: 'Copy', onClick: () => emitToast('success', `${n.name} copied`) },
-                      { label: 'Drain node', icon: 'Ban', kind: 'warn', disabled: role !== 'admin', onClick: () => emitToast('warn', `Drain requested for ${n.name} — simulated`) },
-                      { label: 'Power off node', icon: 'Power', kind: 'danger', disabled: role !== 'admin', onClick: () => emitToast('error', `Power off rejected in demo mode`) },
+                      ...(role === 'admin' ? [
+                        { label: 'Drain node', icon: 'Ban', kind: 'warn' as const, onClick: () => emitToast('warn', `Drain requested for ${n.name} — simulated`) },
+                        { label: 'Power off node', icon: 'Power', kind: 'danger' as const, onClick: () => emitToast('error', `Power off rejected in demo mode`) },
+                      ] : []),
                     ]}
                   />
                 </td>

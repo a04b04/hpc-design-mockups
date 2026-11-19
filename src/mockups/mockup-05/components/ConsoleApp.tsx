@@ -100,7 +100,7 @@ export default function ConsoleApp() {
       case 'dashboard': return <DashboardPage role={role} />
       case 'nodes': return 'partition' in route && route.partition ? <NodesPage role={role} initialPartition={route.partition} /> : <NodesPage role={role} />
       case 'node': return 'node' in route ? <NodeDetailPage nodeName={route.node} role={role} onOpenSession={openSession} /> : null
-      case 'partitions': return <PartitionsPage />
+      case 'partitions': return <PartitionsPage role={role} />
       case 'partition': return 'partition' in route ? <PartitionDetailPage name={route.partition} role={role} /> : null
       case 'reservations': return <ReservationsPage role={role} />
       case 'resv': return 'resv' in route ? <ReservationDetailPage name={route.resv} role={role} /> : null
